@@ -16,9 +16,10 @@ This is probably easier to explain by example. Consider a "file uploader" where 
 - [Install](#install)
     - [npm Package](#npm-package)
 - [Usage By Example](#usage-by-example)
-    - [Constructor](#constructor)
+    - [Set Up](#set-up)
     - [Task Creation](#task-creation)
     - ["Visibility"](#visibility)
+    - [Throttled Dispatch Setup](#throttled-dispatch-setup)
     - [Debug](#debug)
 
 <!-- /MarkdownTOC -->
@@ -32,28 +33,79 @@ This is available as [`async-task-manager`](https://www.npmjs.com/package/async-
 
 ## Usage By Example
 
-### Constructor
+### Set Up
+
+[underscore](http://underscorejs.org/) has to be injected as a dependency.
+
 ```javascript
-const asyncTaskManager = new AsyncTaskManager({
+const _ = require('underscore');
+const createAsyncTaskManager = require('async-task-manager')(_);
+
+const asyncTaskManager = createAsyncTaskManager({
     resources: {
-        hammers: 2,
-        spanners: 1,
-        pots: 3,
-        pans: 8,
-        // or... 'concurrent-upload': 3, 'concurrent-xxx': 2
-    },
-    dispatchThrottleInterval: 100
+        'concurrent-upload': 3,
+        'concurrent-hashing': 1
+    }
 });
 ```
 
 ### Task Creation
 
 ```javascript
+files.forEach(fileInfo => {
+    const hashingPromise = asyncTaskManager.addTask({
+        task: function hashFile({ fileInfo }) {
+            return doHash(fileInfo);
+        },
+        inputs: {
+            fileInfo: fileInfo  // not a Promise just a value
+        },
+        resources: {
+            'concurrent-hashing': 1
+        },
+    });
+
+    asyncTaskManager.addTask({
+        task: function uploadFile({ hash, fileInfo }) {
+            return doUploadAndIndicateHash(fileInfo, hash);
+        },
+        inputs: {
+            hash: hashingPromise,  // a Promise (used as pre-requisite)
+            fileInfo: fileInfo     // not a Promise just a value (used as parameter)
+        },
+        resources: {
+            'concurrent-upload': 1
+        },
+    });
+});
 ```
 
 ### "Visibility"
 
 ```javascript
+```
+
+### Throttled Dispatch Setup
+
+It may be useful to limit the frequency that tasks are dispatched (e.g.: to play nice with the UI), and this may be done by adding a `dispatchThrottleIntervalInMs` option (defaults to `0` for no throttling).
+
+```javascript
+const _ = require('underscore');
+const createAsyncTaskManager = require('async-task-manager')(_);
+
+const asyncTaskManager = createAsyncTaskManager({
+    resources: {
+        'concurrent-upload': 3,
+        'concurrent-hashing': 1
+    },
+    dispatchThrottleIntervalInMs: 50
+});
+```
+
+To change the throttling interval:
+
+```javascript
+asyncTaskManager.setDispatchThrottleInterval(100);
 ```
 
 ### Debug
