@@ -96,4 +96,26 @@ describe('Utilities', () => {
 			done();
 		}).catch(done);
 	});
+
+	it('createObjectPropertyGetter works', () => {
+		const target = {};
+		const o = { a: 1, b: 2 };
+		AsyncTaskManagerUtilities.createObjectPropertyGetter(target, 'o', o);
+		const o2 = target.o;
+		expect(_.isEqual(o, o2)).to.be.true;
+		o2.a = 7;
+		expect(o.a).to.equal(1);
+		expect(o2.a).to.equal(7);
+	});
+
+	it('createArrayPropertyGetter works', () => {
+		const target = {};
+		const arr = [1, 2, 3];
+		AsyncTaskManagerUtilities.createArrayPropertyGetter(target, 'arr', arr);
+		const arr2 = target.arr;
+		expect(_.isEqual(arr, arr2)).to.be.true;
+		arr2[0] = 7;
+		expect(arr[0]).to.equal(1);
+		expect(arr2[0]).to.equal(7);
+	});
 });

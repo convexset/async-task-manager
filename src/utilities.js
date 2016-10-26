@@ -64,6 +64,22 @@ module.exports = function createUtilities(_) {
 			return new Promise(resolve => {
 				resolve(fn.call(context, arg));
 			});
-		}
+		},
+
+		// places a getter on an object that returns a (shallow) copy of an
+		// object
+		createObjectPropertyGetter: function createObjectPropertyGetter(target, name, o) {
+			Object.defineProperty(target, name, {
+				get: () => _.extend({}, o)
+			});
+		},
+
+		// places a getter on an object that returns copy of an array with
+		// shallow copying for object elements
+		createArrayPropertyGetter: function createArrayPropertyGetter(target, name, arr) {
+			Object.defineProperty(target, name, {
+				get: () => arr.map(x => _.isObject(x) ? _.extend({}, x) : x)
+			});
+		},
 	};
 };
