@@ -89,6 +89,7 @@ const uploadProgress = files.map(fileInfo => {
         },
     });
 
+    // the upload
     const uploadPromise = asyncTaskManager.addTask({
         id: `upload-${fileInfo.filename}`,  // id is randomly generated if omitted
         task: function uploadFile({ hash, fileHandle }) {
