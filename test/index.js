@@ -77,4 +77,23 @@ describe('Utilities', () => {
 			{ priority: 3, creationTime: new Date(1000) },
 		])).to.be.true;
 	});
+
+	it('objectAddition and objectSubtract work', () => {
+		const x = { a: 1, b: 1 };
+		const y = { b: 1, c: 1 };
+		const y0 = { a: 0, b: 1, c: 1 };
+		const z = { a: 1, b: 2, c: 1 };
+		expect(_.isEqual(z, AsyncTaskManagerUtilities.objectAdd(x, y))).to.be.true;
+		expect(_.isEqual(y0, AsyncTaskManagerUtilities.objectSubtract(z, x))).to.be.true;
+	});
+
+	it('runPromisified works', done => {
+		const p = AsyncTaskManagerUtilities.runPromisified(x => x.a + x.b, { a: 1, b: 1 });
+		expect(p instanceof Promise).to.be.true;
+
+		p.then(res => {
+			expect(res).to.equal(2);
+			done();
+		}).catch(done);
+	});
 });

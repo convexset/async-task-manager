@@ -37,6 +37,33 @@ module.exports = function createUtilities(_) {
 				result = x[key] < y[key] ? ord * -1 : ord * 1;
 			});
 			return result || -1;
+		},
+
+		// object addition
+		// e.g. objectAdd({a:1, b:1}, {b:1, c:1}) --> {a:1,b:2,c:1}
+		objectAdd: function objectAdd(x, y) {
+			const o = _.extend({}, x);
+			_.forEach(y, (v, k) => {
+				o[k] = (o[k] || 0) + v;
+			});
+			return o;
+		},
+
+		// object subtract
+		// e.g. objectSubtract({a:1, b:1}, {b:1, c:1}) --> {a:1,b:0,c:-1}
+		objectSubtract: function objectSubtract(x, y) {
+			const o = _.extend({}, x);
+			_.forEach(y, (v, k) => {
+				o[k] = (o[k] || 0) - v;
+			});
+			return o;
+		},
+
+		// returns a promise resolving to the result of a function call
+		runPromisified: function runPromisified(fn, arg = void 0, context = {}) {
+			return new Promise(resolve => {
+				resolve(fn.call(context, arg));
+			});
 		}
 	};
 };
