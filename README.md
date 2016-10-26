@@ -16,10 +16,10 @@ This is probably easier to explain by example. Consider a "file uploader" where 
 - [Install](#install)
     - [npm Package](#npm-package)
 - [Usage By Example](#usage-by-example)
-        - [Constructor](#constructor)
-        - [Task Creation](#task-creation)
-        - ["Visibility"](#visibility)
-        - [Debug](#debug)
+    - [Constructor](#constructor)
+    - [Task Creation](#task-creation)
+    - ["Visibility"](#visibility)
+    - [Debug](#debug)
 
 <!-- /MarkdownTOC -->
 
@@ -32,7 +32,7 @@ This is available as [`async-task-manager`](https://www.npmjs.com/package/async-
 
 ## Usage By Example
 
-#### Constructor
+### Constructor
 ```javascript
 const asyncTaskManager = new AsyncTaskManager({
     resources: {
@@ -46,17 +46,17 @@ const asyncTaskManager = new AsyncTaskManager({
 });
 ```
 
-#### Task Creation
+### Task Creation
 
 ```javascript
 ```
 
-#### "Visibility"
+### "Visibility"
 
 ```javascript
 ```
 
-#### Debug
+### Debug
 
 ```javascript
 asyncTaskManager.DEBUG_MODE = true
