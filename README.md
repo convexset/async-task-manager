@@ -54,11 +54,11 @@ const asyncTaskManager = createAsyncTaskManager({
 ```javascript
 files.forEach(fileInfo => {
     const hashingPromise = asyncTaskManager.addTask({
-        task: function hashFile({ fileInfo }) {
-            return doHash(fileInfo);
+        task: function hashFile({ fileBytes }) {
+            return doHash(fileBytes);
         },
         inputs: {
-            fileInfo: fileInfo  // not a Promise just a value
+            fileBytes: fileInfo.bytes  // not a Promise just a value
         },
         resources: {
             'concurrent-hashing': 1
@@ -66,12 +66,12 @@ files.forEach(fileInfo => {
     });
 
     asyncTaskManager.addTask({
-        task: function uploadFile({ hash, fileInfo }) {
+        task: function uploadFile({ hash, fileHandle }) {
             return doUploadAndIndicateHash(fileInfo, hash);
         },
         inputs: {
-            hash: hashingPromise,  // a Promise (used as pre-requisite)
-            fileInfo: fileInfo     // not a Promise just a value (used as parameter)
+            hash: hashingPromise,        // a Promise (used as pre-requisite)
+            fileHandle: fileInfo.handle  // not a Promise just a value (used as parameter)
         },
         resources: {
             'concurrent-upload': 1
@@ -111,5 +111,5 @@ asyncTaskManager.setDispatchThrottleInterval(100);
 ### Debug
 
 ```javascript
-asyncTaskManager.DEBUG_MODE = true
+asyncTaskManager.DEBUG_MODE = true;
 ```
