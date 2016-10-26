@@ -22,9 +22,20 @@ module.exports = function createUtilities(_) {
 				});
 		},
 
+		// Custom sort by: Usage:
+		//
+		// someArray.sort(sortBy([
+		//     ['priority', 1],     // lower values first
+		//     ['creationTime', 1]  // lower values first
+		// ]));
 		sortBy: order => (x, y) => {
 			let result = null;
-			order.forEach()
+			order.forEach(([key, ord]) => {
+				if ((result !== null) || _.isEqual(x[key], y[key])) {
+					return;
+				}
+				result = x[key] < y[key] ? ord * -1 : ord * 1;
+			});
 			return result || -1;
 		}
 	};
