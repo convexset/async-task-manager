@@ -9,7 +9,8 @@ module.exports = function initAsyncTaskManager(_) {
 	} = require('./utilities')(_);
 
 	function AsyncTaskManager({
-		resources = {}
+		resources = {},
+		dispatchThrottleIntervalInMs = 0,
 	} = {}) {
 		checkResources(resources);
 		// do stuff here
@@ -49,3 +50,27 @@ module.exports = function initAsyncTaskManager(_) {
 
 	return AsyncTaskManager;
 };
+
+
+// setup for code to be included...
+const _ = require('underscore');
+const dispatchThrottleIntervalInMs = 0;
+const atm = {}; // suppose this is your instance
+
+
+// actual code to be included...
+
+//////////////////////////////////////////////////////////////////////
+// Dispatch Throttling
+//////////////////////////////////////////////////////////////////////
+function _dispatchTasks() {
+	// actual function for dispatching tasks
+}
+atm.setDispatchThrottleInterval = function setDispatchThrottleInterval(t) {
+	atm.dispatchTasks = _.throttle(_dispatchTasks, t);
+};
+atm.setDispatchThrottleInterval(dispatchThrottleIntervalInMs);
+//////////////////////////////////////////////////////////////////////
+
+// use createObjectPropertyGetter and createArrayPropertyGetter
+// to expose currentResources and other things safely
