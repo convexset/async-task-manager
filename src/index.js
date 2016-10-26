@@ -1,5 +1,12 @@
 module.exports = function initAsyncTaskManager(_) {
-	const { checkResources } = require('./utilities')(_);
+	const {
+		checkResources,
+		promiseAll_ObjectEdition,
+		sortBy,
+		objectAdd,
+		objectSubtract,
+		runPromisified,
+	} = require('./utilities')(_);
 
 	function AsyncTaskManager({
 		resources = {}
