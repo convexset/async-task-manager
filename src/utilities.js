@@ -1,4 +1,22 @@
+function ErrorReportArray() {
+	this._errors = [];
+}
+
 module.exports = function createUtilities(_) {
+	ErrorReportArray.prototype = _.object(['push', 'forEach'].map(k => [k, function() {
+		return this._errors[k].apply(this._errors, arguments);
+	}]));
+	ErrorReportArray.prototype.copy = function copy() {
+		const newErrorReportArray = new ErrorReportArray();
+		this.forEach(x => newErrorReportArray.push(x));
+		return newErrorReportArray;
+	};
+	Object.defineProperty(ErrorReportArray.prototype, 'errors', {
+		get: function getErrors() {
+			return this._errors.map(x => x);
+		}
+	});
+
 	return {
 		// checks that resource specifications are valid (values non-negative)
 		checkResources: function checkResources(resources) {
@@ -13,14 +31,45 @@ module.exports = function createUtilities(_) {
 		//
 		// e.g.:
 		// promiseAll_ObjectEdition({a: Promise.resolve(7)}) --> {a: 7}
-		promiseAll_ObjectEdition: function promiseAllObjectEdition(objectWithPromises) {
+		promiseAll_ObjectEdition: function promiseAllObjectEdition(objectWithPromises, taskId) {
 			const keys = Object.keys(objectWithPromises);
-			const promises = keys.map(k => objectWithPromises[k] instanceof Promise ? objectWithPromises[k] : Promise.resolve(objectWithPromises[k]));
+			const promises = keys
+				.map(k => objectWithPromises[k] instanceof Promise ? objectWithPromises[k] : Promise.resolve(objectWithPromises[k]))
+				.map((p, idx) => p
+					.catch(e => {
+						const thisError = { input: keys[idx], taskId: taskId };
+						if (e instanceof ErrorReportArray) {
+							const newErrorReportArray = e.copy();
+							newErrorReportArray.push(thisError);
+							return newErrorReportArray;
+						} else {
+							thisError.error = e;
+							const newErrorReportArray = new ErrorReportArray();
+							newErrorReportArray.push(thisError);
+							return newErrorReportArray;
+						}
+					})
+				);
+
 			return Promise.all(promises)
 				.then(results => {
-					return _.object(keys.map((k, idx) => [k, results[idx]]));
+					const errors = results.filter(x => x instanceof ErrorReportArray);
+					if (errors.length === 1) {
+						throw errors[0];
+					} else if (errors.length > 1) {
+						// combine error arrays
+						const newErrorReportArray = new ErrorReportArray();
+						errors.forEach(errorReportArray => {
+							errorReportArray.forEach(error => newErrorReportArray.push(error));
+						});
+						throw newErrorReportArray;
+					} else {
+						return _.object(keys.map((k, idx) => [k, results[idx]]));
+					}
 				});
 		},
+		// internal type
+		ErrorReportArray: ErrorReportArray,
 
 		// Custom sort by: Usage:
 		//

@@ -54,9 +54,72 @@ describe('Utilities', () => {
 					b: 4,
 					later: true,
 				})).to.be.true;
-				done();
 			})
-			.catch(done);
+			.catch(() => true)
+			.then(() => done());
+	});
+
+	it('promiseAll_ObjectEdition rejects correctly (one level)', done => {
+		const pObject = AsyncTaskManagerUtilities.promiseAll_ObjectEdition({
+			a: 'a',
+			b: Promise.resolve(4),
+			animal: new Promise((resolve, reject) => {
+				setTimeout(() => {
+					reject('cat');
+				}, 10);
+			}),
+			fish: new Promise((resolve, reject) => {
+				setTimeout(() => {
+					reject('tuna');
+				}, 10);
+			}),
+		}, 'task-id');
+
+		pObject
+			.catch(errors => {
+				expect(_.isEqual(errors.errors, [
+					{ input: 'animal', taskId: 'task-id', error: 'cat' },
+					{ input: 'fish', taskId: 'task-id', error: 'tuna' }
+				])).to.be.true;
+			})
+			.then(() => done());
+	});
+
+	it('promiseAll_ObjectEdition rejects correctly (multiple levels)', done => {
+		const pOne = AsyncTaskManagerUtilities.promiseAll_ObjectEdition({
+			a: 'a',
+			fail1: new Promise((resolve, reject) => {
+				setTimeout(() => {
+					reject('one');
+				}, 10);
+			}),
+			fail2: new Promise((resolve, reject) => {
+				setTimeout(() => {
+					reject('two');
+				}, 10);
+			})
+		}, 'task-one');
+
+		const pTwo = AsyncTaskManagerUtilities.promiseAll_ObjectEdition({
+			b: 'b',
+			pOne: pOne
+		}, 'task-two');
+
+		const pThree = AsyncTaskManagerUtilities.promiseAll_ObjectEdition({
+			c: 'c',
+			pTwo: pTwo
+		}, 'task-three');
+
+		pThree
+			.catch(errors => {
+				expect(_.isEqual(errors.errors, [
+					{ input: 'fail1', taskId: 'task-one', error: 'one' },
+					{ input: 'fail2', taskId: 'task-one', error: 'two' },
+					{ input: 'pOne', taskId: 'task-two' },
+					{ input: 'pTwo', taskId: 'task-three' }
+				])).to.be.true;
+			})
+			.then(() => done());
 	});
 
 	it('sortBy sorts correctly', () => {
