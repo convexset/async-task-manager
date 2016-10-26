@@ -4,8 +4,8 @@ const it = require('mocha').it;
 // const should = require('chai').should();
 const expect = require('chai').expect;
 
-const AsyncTaskManager = require('../src');
 const _ = require('underscore');
+const AsyncTaskManager = require('../src')(_);
 
 describe('AsyncTaskManager basics', () => {
 	it('AsyncTaskManager is a function', () => {
