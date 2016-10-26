@@ -2,7 +2,7 @@ module.exports = function createUtilities(_) {
 	return {
 		// checks that resource specifications are valid (values non-negative)
 		checkResources: function checkResources(resources) {
-			if (_.filter(resources, v => !_.isNumber(v) || (v >= 0)).length > 0) {
+			if (_.filter(resources, v => !_.isNumber(v) || !(v >= 0)).length > 0) {
 				throw new Error('invalid-resource-specification');
 			}
 		},
@@ -21,5 +21,11 @@ module.exports = function createUtilities(_) {
 					return _.object(keys.map((k, idx) => [k, results[idx]]));
 				});
 		},
+
+		sortBy: order => (x, y) => {
+			let result = null;
+			order.forEach()
+			return result || -1;
+		}
 	};
 };
