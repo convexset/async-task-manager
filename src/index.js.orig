@@ -8,6 +8,11 @@ module.exports = function initAsyncTaskManager(_) {
 		runPromisified,
 	} = require('./utilities')(_);
 
+<<<<<<< Updated upstream
+	function AsyncTaskManager({
+		resources = {},
+		dispatchThrottleIntervalInMs = 0,
+=======
  	let id = 1000;
 
 	const _atm = function AsyncTaskManager() {};
@@ -15,7 +20,7 @@ module.exports = function initAsyncTaskManager(_) {
 	const x = createAsyncTaskManager({})
 	function createAsyncTaskManager({
 		resources = {},
-		dispatchThrottleIntervalInMs = 0,
+>>>>>>> Stashed changes
 	} = {}) {
 		// deal with options
 		checkResources(resources);
