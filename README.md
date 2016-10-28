@@ -16,15 +16,8 @@ This can be readily achieved within the `AsyncTaskManager` framework:
 
 <!-- MarkdownTOC -->
 
-- [Install](#install)
-    - [npm Package](#npm-package)
-- [Usage By Example](#usage-by-example)
-    - [Set Up](#set-up)
-    - [Task Creation](#task-creation)
-    - ["Visibility"](#visibility)
-    - [Pausing the Dispatch of New Tasks](#pausing-the-dispatch-of-new-tasks)
-    - [Throttled Dispatch Setup](#throttled-dispatch-setup)
-    - [Debug](#debug)
+- Install
+- Usage By Example
 
 <!-- /MarkdownTOC -->
 
@@ -117,7 +110,7 @@ Note that tasks can be added at any time.
 
  - The promises that are returned by `asyncTaskManager.addTask` can be handed off to other parts of an application, and promises from various parts of an application can be used as inputs.
  - A single object argument will be passed into the `task` function when it is "dispatched", and its keys will match those of `inputs` argument key, with promises being replaced by the values they resolve to, and non-promise values being passed in as is.
-- The `resources` key provides information on the 
+- The `resources` key provides information on the "resources" required by the task
 - The `id` key is an optional id that may come in useful in the event that an the task or something it depends on throws an exception or "rejects".
 
 When a "reject" is "caught" as an argument `e`, `e.errors` will be an array of objects of the following form:

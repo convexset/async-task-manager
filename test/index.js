@@ -1,13 +1,34 @@
 const describe = require('mocha').describe;
+const xdescribe = () => null;
 const it = require('mocha').it;
 
-// const should = require('chai').should();
-// const assert = require('chai').assert;
-const expect = require('chai').expect;
+const chai = require('chai');
+chai.use(require('chai-as-promised'));
+
+// const should = chai.should();
+// const assert = chai.assert;
+const expect = chai.expect;
 
 const _ = require('underscore');
 const createAsyncTaskManager = require('../src')(_);
-const AsyncTaskManagerUtilities = require('../src/utilities.js')(_);
+// const AsyncTaskManagerUtilities = require('../src/utilities.js')(_);
+
+// function makeDelay(t) {
+// 	return v => new Promise(resolve => {
+// 		setTimeout(() => resolve(v), t);
+// 	});
+// }
+
+function makePromiseWithControlledResolution(resolveValue = true, rejectValue = false) {
+	const ret = {};
+	const p = new Promise((resolve, reject) => {
+		ret.resolvePromise = () => resolve(resolveValue);
+		ret.rejectPromise = () => reject(rejectValue);
+	});
+	ret.promise = p;
+	return ret;
+}
+
 
 describe('createAsyncTaskManager bare basics', () => {
 	it('createAsyncTaskManager is a function', () => {
@@ -28,7 +49,6 @@ describe('createAsyncTaskManager bare basics', () => {
 	it('asyncTaskManager totalResources & currentResources', () => {
 		const r = { a: 1, b: 2 };
 		const rCopy = _.extend({}, r);
-		const functionInput = {x:2, a: 'sadv'};
 
 		const atm = createAsyncTaskManager({
 			resources: r
@@ -45,89 +65,153 @@ describe('createAsyncTaskManager bare basics', () => {
 		r.b = 131;
 
 		expect(rCopy).to.deep.equal(atm.totalResources);
-		expect(rCopy).to.deep.equal(atm.currentResources);	
-
+		expect(rCopy).to.deep.equal(atm.currentResources);
 	});
 });
 
-describe('createAsyncTaskManager function test',()=>{
-	const atm = createAsyncTaskManager({
-		resources: {sheep: 3, wood:1}
+describe('promise testing', () => {
+	it('simple promise tests', () => {
+		return Promise.all([
+			expect(Promise.resolve(5)).to.eventually.be.equal(5),
+			// expect(new Promise(resolve => setTimeout(() => resolve(2), 10))).to.eventually.be.equal(5) // will fail
+		]);
+	});
+});
+
+xdescribe('createAsyncTaskManager function test', () => {
+	const asyncTaskManager = createAsyncTaskManager({
+		resources: { sheep: 3, wood: 1 }
 	});
 
-	beforeEach(()=>{
-		let resolved;
-		let rejected;
+	const _inputA = makePromiseWithControlledResolution('a');
+	const _inputB = makePromiseWithControlledResolution({ b: 'b' });
 
-		const makeDelay = t => (v => new Promise(resolve => {
-			setTimeout(() => { resolve(v) }, t);
-			console.log(t);
-		}));
+	let taskAlpha;
+	let taskBeta;
 
-		const p_z = new Promise((resolve,reject)=>{
-			resolve = resolve;
-			reject = reject;
-		})
+	it('taskAlpha has correct arguments when called', done => {
+		taskAlpha = function({ inputA, inputB }) {
+			// test arguments and move on
+			expect(inputA).to.deep.equal('a');
+			expect(inputB).to.deep.equal({ b: 'b' });
+			setTimeout(done, 0);
 
-		const p_a = p_z.then(makeDelay(4000)); //4s delayed 
-		const p_b = p_z.then(makeDelay(5000)); //5s delayed 
-		const p_c = p_z.then(makeDelay(2000)); //5s delayed 
-
-		const lit = 10;
-
-		const alpha = function alpha({promise1: p_a, promise2: p_b, literal: lit}) {
-			let p_a_value;
-			let p_b_value;
-			promise1.then(x=>{
-				p_a_value = x;
+			// return promise here for fun
+			const output = `${inputA}${inputB.b}`;
+			return new Promise(resolve => {
+				setTimeout(() => {
+					resolve(output);
+				}, 50);
 			});
-			promise2.then(x=>{
-				p_b_value = x;
-			});
-
-			return (p_a_value || 0) + (p_a_value || 0) + lit;
-		}
-
-		const beta = function beta({_function: alpha, promise1: p_c, literal = lit}) {
-			let p_c_value;
-			promise1.then(x=>{
-				p_c_value = x;
-			});
-			return _function + promise1 + lit;
-		}
-		const task = {
-			id:1,
-			inputs : { a: p_a, b: p_b },
-			task :alpha,
-			resources : { 'sheep': 2, 'wood': 2 },
-			priority : 3
 		};
-	// })
-	
-	// before(()=>{
-		atm.addTask(task);
-	})
+	});
 
-	it('addTask adds an element to pending task',()=>{
-		expect(atm.pendingTasks.length).to.equal(1);
-	})
+	it('taskBeta has correct arguments when called', done => {
+		taskBeta = function({ taskAlphaOutput, inputB, inputC }) {
+			// test arguments and move on
+			expect(taskAlphaOutput).to.deep.equal('ab');
+			expect(inputB).to.deep.equal({ b: 'b' });
+			expect(inputC).to.deep.equal('c');
+			done();
 
-	it('check pendingTasks, readyTasks and executingTasks are all arrays',()=>{
-		expect(atm.pendingTasks).to.be.an('array');
-		expect(atm.readyTasks).to.be.an('array');
-		expect(atm.executingTasks).to.be.an('array');
+			// return promise here for fun
+			return new Promise(resolve => {
+				setTimeout(() => {
+					resolve(`${taskAlphaOutput}${inputC}`);
+				}, 50);
+			});
+		};
+	});
 
-	})
+	const taskAlphaDescription = {
+		id: 1,
+		inputs: {
+			inputA: _inputA.promise,
+			inputB: _inputB.promise
+		},
+		task: taskAlpha,
+		resources: { 'sheep': 2, 'wood': 1 },
+		priority: 3
+	};
+	let taskAlphaPromise;
 
-	it('addTask returns error when prereqs rejected',(done)=>{
-		// expect(true);
-		rejected(1);
-		done();
+	it('addTask adds taskAlphaDescription to pending tasks list', () => {
+		taskAlphaPromise = asyncTaskManager.addTask(taskAlphaDescription);
+		expect(asyncTaskManager.pendingTasks.length).to.equal(1);
+	});
 
-	})
+	const taskBetaDescription = {
+		id: 1,
+		inputs: {
+			taskAlphaOutput: taskAlphaPromise,
+			inputB: _inputB.promise,
+			inputC: 'c'
+		},
+		task: taskBeta,
+		resources: { 'sheep': 2, 'wood': 0 },
+		priority: 3
+	};
+	let taskBetaPromise;
 
+	it('addTask adds taskAlphaDescription to pending tasks list', () => {
+		taskBetaPromise = asyncTaskManager.addTask(taskBetaDescription);
+		expect(asyncTaskManager.pendingTasks.length).to.equal(2);
+	});
 
+	it('check pendingTasks, readyTasks and executingTasks are all arrays', () => {
+		expect(asyncTaskManager.pendingTasks).to.be.an('array');
+		expect(asyncTaskManager.readyTasks).to.be.an('array');
+		expect(asyncTaskManager.executingTasks).to.be.an('array');
+	});
 
+	// test: call _inputA.resolvePromise()
+	// --> nothing starts
+	it('inputA promise resolves but nothing happens', () => {
+		_inputA.resolvePromise();
+		expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(2);
+	});
+
+	// test: call _inputB.resolvePromise()
+	// --> Task A starts (check 10 ms after resolving)
+	it('inputB promise resolves; Task A Starts', done => {
+		_inputB.resolvePromise();
+		// console.log('inputB promise resolves; Task A Starts; pendingTasks:', asyncTaskManager.pendingTasks);
+		setTimeout(() => {
+			expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(1);
+			expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(1);
+			done();
+		}, 10);
+	});
+
+	// test: taskAlphaPromise resolves
+	// --> Task B starts (check 10 ms after resolving)
+	// --> Task A is no longer in executing list (check 1ms after resolving)
+
+	it('taskAlphaPromiseresolves resolves; Task A Starts', done => {
+		taskAlphaPromise.then(value => {
+			setTimeout(() => {
+				expect(value).to.be.deep.equal('ab');
+				expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(0);
+				expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(1);
+				done();
+			}, 10);
+		});
+	});
+
+	// test: taskBetaPromise resolves
+	// --> Task B is no longer in executing list (check 1ms after resolving)
+	// --> Task B resolves to 'abc'
+	it('taskBetaPromiseresolves resolves', done => {
+		taskBetaPromise.then(value => {
+			setTimeout(() => {
+				expect(value).to.be.deep.equal('abc');
+				expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(0);
+				expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(0);
+				done();
+			}, 10);
+		});
+	});
 });
 
-require('./utilities-tests.js')
+// execute utilities tests
+require('./utilities-tests.js');

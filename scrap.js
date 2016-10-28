@@ -1,4 +1,9 @@
-
+const asyncTaskManager = createAsyncTaskManager({
+    resources: {
+        'concurrent-upload': 3,
+        'concurrent-hashing': 1
+    }
+});
 
 
 

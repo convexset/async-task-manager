@@ -4,7 +4,7 @@ function ErrorReportArray() {
 
 module.exports = function createUtilities(_) {
 	ErrorReportArray.prototype = _.object(['push', 'forEach'].map(k => [k, function() {
-		return this._errors[k].apply(this._errors, arguments);
+		return this._errors[k](...arguments);
 	}]));
 	ErrorReportArray.prototype.copy = function copy() {
 		const newErrorReportArray = new ErrorReportArray();
