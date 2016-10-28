@@ -1,11 +1,7 @@
 module.exports = function initAsyncTaskManager(_) {
 	const {
 		checkResources,
-		// promiseAll_ObjectEdition,
-		// sortBy,
-		// objectAdd,
-		// objectSubtract,
-		// runPromisified,
+		createArrayPropertyGetter,
 		createObjectPropertyGetter,
 	} = require('./utilities.js')(_);
 
@@ -24,11 +20,15 @@ module.exports = function initAsyncTaskManager(_) {
 			totalResources: _.extend({}, resources),
 			currentResources: _.extend({}, resources),
 			executingTasks: [],
+			readyTasks: [],
 			pendingTasks: [],
+			DEBUG_MODE: false
 		};
 		createObjectPropertyGetter(atm, 'totalResources', internals.totalResources);
 		createObjectPropertyGetter(atm, 'currentResources', internals.currentResources);
-		createObjectPropertyGetter(atm, 'pendingTasks', internals.pendingTasks);
+		createArrayPropertyGetter(atm, 'readyTasks', internals.readyTasks);
+		createArrayPropertyGetter(atm, 'executingTasks', internals.executingTasks);
+		createArrayPropertyGetter(atm, 'pendingTasks', internals.pendingTasks);
 
 		_.forEach(require('./internals.js')(_, internals), (fn, name) => {
 			Object.defineProperty(atm, name, {

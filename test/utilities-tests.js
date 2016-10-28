@@ -131,8 +131,11 @@ describe('Utilities', () => {
 		const y = { b: 1, c: 1 };
 		const y0 = { a: 0, b: 1, c: 1 };
 		const z = { a: 1, b: 2, c: 1 };
+		const z2 = { b: 2, c: 2 };
+		const zR = { a: -1, b: 0, c: 1 };
 		expect(_.isEqual(z, AsyncTaskManagerUtilities.objectAdd(x, y))).to.be.true;
 		expect(_.isEqual(y0, AsyncTaskManagerUtilities.objectSubtract(z, x))).to.be.true;
+		expect(zR).to.deep.equal(AsyncTaskManagerUtilities.objectSubtract(z2,z));
 	});
 
 	it('runPromisified works', done => {

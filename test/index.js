@@ -34,26 +34,100 @@ describe('createAsyncTaskManager bare basics', () => {
 			resources: r
 		});
 
-		atm.addTask({
-			id:1,
-			inputs: functionInput,
-			task: function(){return 2;},
-			resources: r
-		})
-
 		// typical
 		expect(_.isObject(atm.totalResources)).to.be.true;
 		expect(_.isObject(atm.currentResources)).to.be.true;
-		expect(_.isEqual(r, atm.totalResources)).to.be.true;
-		expect(_.isEqual(r, atm.currentResources)).to.be.true;
+		expect(r).to.deep.equal(atm.totalResources);
+		expect(r).to.deep.equal(atm.currentResources);
 
 		// non-external mutability
 		r.a = 324324;
 		r.b = 131;
-		expect(_.isEqual(rCopy, atm.totalResources)).to.be.true;
-		expect(_.isEqual(rCopy, atm.currentResources)).to.be.true;
-		expect(_.isEqual(atm.pendingTasks.length, 1)).to.be.true;
+
+		expect(rCopy).to.deep.equal(atm.totalResources);
+		expect(rCopy).to.deep.equal(atm.currentResources);	
+
 	});
+});
+
+describe('createAsyncTaskManager function test',()=>{
+	const atm = createAsyncTaskManager({
+		resources: {sheep: 3, wood:1}
+	});
+
+	beforeEach(()=>{
+		let resolved;
+		let rejected;
+
+		const makeDelay = t => (v => new Promise(resolve => {
+			setTimeout(() => { resolve(v) }, t);
+			console.log(t);
+		}));
+
+		const p_z = new Promise((resolve,reject)=>{
+			resolve = resolve;
+			reject = reject;
+		})
+
+		const p_a = p_z.then(makeDelay(4000)); //4s delayed 
+		const p_b = p_z.then(makeDelay(5000)); //5s delayed 
+		const p_c = p_z.then(makeDelay(2000)); //5s delayed 
+
+		const lit = 10;
+
+		const alpha = function alpha({promise1: p_a, promise2: p_b, literal: lit}) {
+			let p_a_value;
+			let p_b_value;
+			promise1.then(x=>{
+				p_a_value = x;
+			});
+			promise2.then(x=>{
+				p_b_value = x;
+			});
+
+			return (p_a_value || 0) + (p_a_value || 0) + lit;
+		}
+
+		const beta = function beta({_function: alpha, promise1: p_c, literal = lit}) {
+			let p_c_value;
+			promise1.then(x=>{
+				p_c_value = x;
+			});
+			return _function + promise1 + lit;
+		}
+		const task = {
+			id:1,
+			inputs : { a: p_a, b: p_b },
+			task :alpha,
+			resources : { 'sheep': 2, 'wood': 2 },
+			priority : 3
+		};
+	// })
+	
+	// before(()=>{
+		atm.addTask(task);
+	})
+
+	it('addTask adds an element to pending task',()=>{
+		expect(atm.pendingTasks.length).to.equal(1);
+	})
+
+	it('check pendingTasks, readyTasks and executingTasks are all arrays',()=>{
+		expect(atm.pendingTasks).to.be.an('array');
+		expect(atm.readyTasks).to.be.an('array');
+		expect(atm.executingTasks).to.be.an('array');
+
+	})
+
+	it('addTask returns error when prereqs rejected',(done)=>{
+		// expect(true);
+		rejected(1);
+		done();
+
+	})
+
+
+
 });
 
 require('./utilities-tests.js')
