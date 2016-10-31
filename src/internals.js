@@ -48,14 +48,16 @@ module.exports = function generateInternals(_, internals) {
 			creationTime: new Date(),
 			inputsResolved: null //remains null until inputs are resolved
 		};
-		LOG('Adding task', taskDescription);
+		LOG('ADDING TASK', taskDescription);
 
 		// immediately adding taskDescription to a pending list
 		internals.pendingTasks.push(taskDescription);
+		LOG('PENDING TASK ON ADDTASK', internals.pendingTasks);
 		promiseAll_ObjectEdition(inputs)
 			.then(inputsForTask => {
 				// Pre-reqs complete: Inputs available
 				// move task from pending list to ready list to await for resources
+				LOG('ENTERING PENDING TASK UPDATE FUNCTION; TASKDESCRIPTION: ', taskDescription);
 				taskDescription.inputsResolved = inputsForTask;
 				pendingTasksUpdate();
 			})
@@ -66,6 +68,7 @@ module.exports = function generateInternals(_, internals) {
 
 		return new Promise((resolve, reject) => {
 			// store resolve/reject
+			LOG('PROMISE RETURNED FROM ADDTASK CALL');
 			taskDescription.resolve = resolve;
 			taskDescription.reject = reject;
 		});
@@ -77,37 +80,49 @@ module.exports = function generateInternals(_, internals) {
 				return x;
 			}
 		});
+		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION', newlyReadyTasks);
 		internals.pendingTasks.forEach(x => {
 			if (x.inputsResolved) {
 				internals.pendingTasks.shift();
 			}
 		});
+		LOG('PENDING TASK UPDATED', internals.pendingTasks);
 		internals.readyTasks.push(...newlyReadyTasks);
+		LOG('READY TASK UPDATED', internals.readyTasks);
 		readyTasksUpdate();
 	}
 
 	function readyTasksUpdate() {
+		LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
 		while (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
 			internals.readyTasks.sort(sortBy([
 				['priority: 1'],
 				['creationTime: 1']
 			]));
+			LOG('SORTED LIST OF READY TASKS', internals.readyTasks);
 			// check for resource availability to allocate to task
 			const resourceRequiredForTask = internals.readyTasks[0].resources;
 			const tempResourceList = objectSubtract(internals.currentResources, resourceRequiredForTask);
+			LOG('CHECK IF THERE ARE ENOUGH RESOURCES ', tempResourceList);
 			if (_.filter(tempResourceList, (v, k) => v < 0).length === 0) { // there are enough resources
 				const currentTask = internals.readyTasks.shift(); // allocate resource to the first element in the ready list and move it to the executing list
 				// update current resources available
+				LOG('READY TASK LIST AFTER SHIFTING TASK TO EXECUTING LIST ', internals.readyTasks);
 				internals.currentResources = objectSubtract(internals.currentResources, currentTask.resources);
+				LOG('RESOURCES AFTER MOVING TASK TO EXECUTING LIST ', internals.currentResources);
 				internals.executingTasks.push(currentTask);
+				LOG('EXECUTING TASKS LIST AFTER PUSH', internals.executingTasks);
 				const currentInput = currentTask.inputsResolved;
 				// execute the new task in the executing list and return a promise resolved with the returned value
 				runPromisified(currentTask.task, currentInput)
 					.then(x => {
+						LOG('PROMISE FOR ELEMENT IN EXECUTING TASK LIST ', currentTask);
 						currentTask.resolve(x);
 						// after execution is complete free resources and remove from executing list
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
+						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
 						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
+						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION', internals.executingTasks);
 					}).catch(z => {
 						console.log('inside catch', z);
 					});
@@ -116,15 +131,25 @@ module.exports = function generateInternals(_, internals) {
 	}
 
 	function resize(resources) {
+		LOG(internals.currentResources);
+		LOG('INSIDE RESIZE FUNCTION');
+		LOG('NEW RESOURCE LIST ', resources);
 		checkResources(resources);
 		const diffInInitialResources = objectSubtract(resources, internals.totalResources);
+		LOG('DIFFERENCE IN INITIAL RESOURCES ', diffInInitialResources);
 		Object.keys(diffInInitialResources).forEach(k => {
+			LOG(`DIFFERENCE IN INITIAL RESOURCES ${k}, CURRENT RESOURCES ${k}:  ${diffInInitialResources[k]}, ${internals.currentResources[k]}`);
 			internals.currentResources[k] += diffInInitialResources[k];
 		});
-		console.log(internals.currentResources);
-		Object.keys(resources).forEach(k => {
-			internals.totalResources[k] = resources[k];
+		LOG('CURRENT RESOURCE LIST ', internals.currentResources);
+		Object.keys(internals.totalResources).forEach(k => {
+			if (resources[k]) {
+				internals.totalResources[k] = resources[k];
+			} else {
+				internals.totalResources[k] = 0;
+			}
 		});
+		LOG('NEW TOTAL RESOURCES LIST', internals.totalResources);
 	}
 
 	return {

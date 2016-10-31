@@ -1,8 +1,6 @@
 const describe = require('mocha').describe;
 const xdescribe = () => null;
 const it = require('mocha').it;
-const before = require('mocha').before;
-const beforeEach = require('mocha').beforeEach;
 
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
@@ -15,11 +13,6 @@ const _ = require('underscore');
 const createAsyncTaskManager = require('../src')(_);
 // const AsyncTaskManagerUtilities = require('../src/utilities.js')(_);
 
-// function makeDelay(t) {
-// 	return v => new Promise(resolve => {
-// 		setTimeout(() => resolve(v), t);
-// 	});
-// }
 
 function makePromiseWithControlledResolution(resolveValue = true, rejectValue = false) {
 	const ret = {};
@@ -30,7 +23,6 @@ function makePromiseWithControlledResolution(resolveValue = true, rejectValue = 
 	ret.promise = p;
 	return ret;
 }
-
 
 describe('createAsyncTaskManager bare basics', () => {
 	it('createAsyncTaskManager is a function', () => {
@@ -204,12 +196,14 @@ describe('createAsyncTaskManager function test', () => {
 		asyncTaskManager.resize({ sheep: 6, wood: 20 });
 		expect(asyncTaskManager.totalResources.sheep).to.deep.equal(6);
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(20);
+		expect(asyncTaskManager.currentResources.sheep).to.deep.equal(6);
+		expect(asyncTaskManager.currentResources.wood).to.deep.equal(20);
 	});
 
 	it('resize can decrease the total resources', () => {
 		asyncTaskManager.resize({ sheep: 2 });
 		expect(asyncTaskManager.totalResources.sheep).to.deep.equal(2);
-		expect(asyncTaskManager.totalResources.wood).to.deep.equal(20);
+		expect(asyncTaskManager.totalResources.wood).to.deep.equal(0);
 	});
 });
 
