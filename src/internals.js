@@ -2,13 +2,12 @@ let nextATMId = 1;
 
 module.exports = function generateInternals(_, internals) {
 	const {
-		// checkResources,
+		checkResources,
 		promiseAll_ObjectEdition,
 		sortBy,
 		objectAdd,
 		objectSubtract,
 		runPromisified,
-		// createObjectPropertyGetter,
 	} = require('./utilities')(_);
 
 	if (!internals.id) {
@@ -31,8 +30,6 @@ module.exports = function generateInternals(_, internals) {
 		return `task-${taskId}`;
 	}
 
-	// let x = 1;
-
 	function addTask({
 		id = nextId(),
 		inputs = {},
@@ -40,9 +37,7 @@ module.exports = function generateInternals(_, internals) {
 		resources = {},
 		priority = 5
 	} = {}) {
-
-		// console.log('number of times addTask is called:', x);
-		// x++;
+		checkResources(resources);
 		// creating taskDescription
 		const taskDescription = {
 			id,
@@ -63,16 +58,6 @@ module.exports = function generateInternals(_, internals) {
 				// move task from pending list to ready list to await for resources
 				taskDescription.inputsResolved = inputsForTask;
 				pendingTasksUpdate();
-
-
-				// internals.pendingTasks = internals.pendingTasks.filter(x => {
-				// return x === taskDescription;
-				// });
-				// console.log('testing internals pending list', internals.pendingTasks);
-				// internals.pendingTasks.splice(internals.pendingTasks.indexOf(taskDescription), 1); // this fails if there are multiple copies of taskDescription
-				// internals.readyTasks.push(taskDescription);
-				// trigger check
-				// readyTasksUpdate();
 			})
 			.catch(error => {
 				// Pre-reqs definitively won't complete
@@ -102,7 +87,7 @@ module.exports = function generateInternals(_, internals) {
 	}
 
 	function readyTasksUpdate() {
-		if (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
+		while (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
 			internals.readyTasks.sort(sortBy([
 				['priority: 1'],
 				['creationTime: 1']
@@ -110,8 +95,6 @@ module.exports = function generateInternals(_, internals) {
 			// check for resource availability to allocate to task
 			const resourceRequiredForTask = internals.readyTasks[0].resources;
 			const tempResourceList = objectSubtract(internals.currentResources, resourceRequiredForTask);
-			// console.log('inside readytaskupdate');
-			// console.log(_.filter(tempResourceList, (v, k) => v < 0));
 			if (_.filter(tempResourceList, (v, k) => v < 0).length === 0) { // there are enough resources
 				const currentTask = internals.readyTasks.shift(); // allocate resource to the first element in the ready list and move it to the executing list
 				// update current resources available
@@ -119,7 +102,6 @@ module.exports = function generateInternals(_, internals) {
 				internals.executingTasks.push(currentTask);
 				const currentInput = currentTask.inputsResolved;
 				// execute the new task in the executing list and return a promise resolved with the returned value
-				// console.log('task', currentTask.task );
 				runPromisified(currentTask.task, currentInput)
 					.then(x => {
 						currentTask.resolve(x);
@@ -131,12 +113,18 @@ module.exports = function generateInternals(_, internals) {
 					});
 			}
 		}
-		// pendingTasksUpdate();
 	}
 
 	function resize(resources) {
-		// const diffInInitialResources = objectSubtract(resources,)
-		// internals.totalResources = resources;
+		checkResources(resources);
+		const diffInInitialResources = objectSubtract(resources, internals.totalResources);
+		Object.keys(diffInInitialResources).forEach(k => {
+			internals.currentResources[k] += diffInInitialResources[k];
+		});
+		console.log(internals.currentResources);
+		Object.keys(resources).forEach(k => {
+			internals.totalResources[k] = resources[k];
+		});
 	}
 
 	return {

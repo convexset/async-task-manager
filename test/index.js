@@ -89,7 +89,7 @@ describe('createAsyncTaskManager function test', () => {
 	const _inputB = makePromiseWithControlledResolution({ b: 'b' });
 
 	// functions
-	let taskAlpha = function({ inputA, inputB }) {
+	const taskAlpha = function({ inputA, inputB }) {
 		const output = `${inputA}${inputB.b}`;
 		return new Promise(resolve => {
 			setTimeout(() => {
@@ -97,54 +97,15 @@ describe('createAsyncTaskManager function test', () => {
 			}, 50);
 		});
 	};
-	let taskBeta = function({ taskAlphaOutput, inputB, inputC }) {
+	const taskBeta = function({ taskAlphaOutput, inputB, inputC }) {
 		// return promise here for fun
 		return new Promise(resolve => {
 			setTimeout(() => {
-				resolve(`${taskAlphaOutput}${inputC}`);
+				resolve(`${taskAlphaOutput}${inputC}${inputB.b}`);
 			}, 50);
 		});
 	};
 
-	/* commenting out because this block is not run
-		it('taskAlpha has correct arguments when called', () => {
-			console.log('asdfa');
-			taskAlpha = function({ inputA, inputB }) {
-				// test arguments and move on
-				expect(inputA instanceof Promise).to.be.true;
-				expect(inputB instanceof Promise).to.be.true;
-				expect(inputB).to.deep.equal({ b: 'b' });
-				expect(inputA).to.deep.equal('a');
-
-				// return promise here for fun
-				const output = `${inputA}${inputB.b}`;
-				return new Promise(resolve => {
-					setTimeout(() => {
-						resolve(output);
-					}, 100);
-				});
-			};
-		});
-
-		it('taskBeta has correct arguments when called', () => {
-			taskBeta = function({ taskAlphaOutput, inputB, inputC }) {
-				// test arguments and move on
-				// expect(taskAlphaOutput).to.deep.equal('ab');
-				// expect(inputB).to.deep.equal({ b: 'b' });
-				expect(taskAlphaOutput instanceof Promise).to.be.true;
-				expect(inputB instanceof Promise).to.be.true;
-				expect(inputC).to.deep.equal('c');
-				done();
-				// return promise here for fun
-				return new Promise(resolve => {
-					setTimeout(() => {
-						console.log(`asdfds${taskAlphaOutput}${inputC}`);
-						resolve(`${taskAlphaOutput}${inputC}`);
-					}, 100);
-				});
-			};
-		});
-	*/
 	const taskAlphaDescription = {
 		id: 1,
 		inputs: {
@@ -156,7 +117,7 @@ describe('createAsyncTaskManager function test', () => {
 		priority: 3
 	};
 
-	const taskAlphaPromise = asyncTaskManager.addTask(taskAlphaDescription); 
+	const taskAlphaPromise = asyncTaskManager.addTask(taskAlphaDescription);
 
 	const taskBetaDescription = {
 		id: 1,
@@ -170,7 +131,7 @@ describe('createAsyncTaskManager function test', () => {
 		priority: 3
 	};
 
-	const taskBetaPromise = asyncTaskManager.addTask(taskBetaDescription); 
+	const taskBetaPromise = asyncTaskManager.addTask(taskBetaDescription);
 
 	it('check pendingTasks, readyTasks and executingTasks are all arrays', () => {
 		expect(asyncTaskManager.pendingTasks).to.be.an('array');
@@ -194,7 +155,7 @@ describe('createAsyncTaskManager function test', () => {
 		_inputB.resolvePromise();
 		setTimeout(() => {
 			expect(asyncTaskManager.pendingTasks.length).to.deep.equal(1);
-			expect(asyncTaskManager.readyTasks.length).to.deep.equal(0); 
+			expect(asyncTaskManager.readyTasks.length).to.deep.equal(0);
 			expect(asyncTaskManager.executingTasks.length).to.deep.equal(1);
 			done();
 		}, 10);
@@ -210,8 +171,8 @@ describe('createAsyncTaskManager function test', () => {
 				try {
 					expect(value).to.be.deep.equal('ab');
 					expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(0);
-					expect(asyncTaskManager.readyTasks.length).to.be.deep.equal(0); 
-					expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(1); 
+					expect(asyncTaskManager.readyTasks.length).to.be.deep.equal(0);
+					expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(1);
 					done();
 				} catch (err) {
 					done(err);
@@ -226,9 +187,8 @@ describe('createAsyncTaskManager function test', () => {
 
 	it('taskBetaPromiseresolves resolves', done => {
 		taskBetaPromise.then(value => {
-			console.log(value);
 			setTimeout(() => {
-				expect(value).to.be.deep.equal('abc');
+				expect(value).to.be.deep.equal('abcb');
 				expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(0);
 				expect(asyncTaskManager.readyTasks.length).to.be.deep.equal(0);
 				expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(0);
@@ -237,6 +197,19 @@ describe('createAsyncTaskManager function test', () => {
 		}).catch(x => {
 			done(x);
 		});
+	});
+
+	// test: resize functionality works
+	it('resize can increase the total resources', () => {
+		asyncTaskManager.resize({ sheep: 6, wood: 20 });
+		expect(asyncTaskManager.totalResources.sheep).to.deep.equal(6);
+		expect(asyncTaskManager.totalResources.wood).to.deep.equal(20);
+	});
+
+	it('resize can decrease the total resources', () => {
+		asyncTaskManager.resize({ sheep: 2 });
+		expect(asyncTaskManager.totalResources.sheep).to.deep.equal(2);
+		expect(asyncTaskManager.totalResources.wood).to.deep.equal(20);
 	});
 });
 
