@@ -1,38 +1,40 @@
 {
-  "name": "async-task-manager",
-  "version": "0.1.0",
-  "description": "A task queue for sync. and async. tasks respecting resource use and precedence constraints.",
-  "main": "_compiled",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/convexset/async-task-manager.git"
-  },
-  "bugs": {
-    "url": "https://github.com/convexset/async-task-manager/issues"
-  },
-  "homepage": "https://github.com/convexset/async-task-manager#readme",
-  "keywords": [
-    "task",
-    "asynchronous",
-    "queue",
-    "resource bounded"
-  ],
-  "dependencies": {},
-  "devDependencies": {
-    "babel-cli": "^6.9.0",
-    "babel-preset-es2015": "^6.9.0",
-    "babel-preset-stage-0": "^6.5.0",
-    "chai": "^3.5.0",
-    "chai-as-promised": "^6.0.0",
-    "isparta": "^4.0.0",
-    "mocha": "^2.4.5"
-  },
-  "scripts": {
-    "compile": "./clean.sh && babel src --out-dir _compiled/ --source-maps",
-    "prepublish": "npm run compile",
-    "test": "mocha --compilers js:babel-core/register --reporter spec",
-    "coverage": "./clean.sh && babel-node ./node_modules/.bin/isparta cover _mocha && open coverage/lcov-report/index.html"
-  },
-  "author": "Jeremy Chen <convexset@gmail.com> (https://github.com/convexset/)",
-  "license": "MIT"
+	"name": "async-task-manager",
+	"version": "0.1.0",
+	"description": "A task queue for sync. and async. tasks respecting resource use and precedence constraints.",
+	"main": "_compiled",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/convexset/async-task-manager.git"
+	},
+	"bugs": {
+		"url": "https://github.com/convexset/async-task-manager/issues"
+	},
+	"homepage": "https://github.com/convexset/async-task-manager#readme",
+	"keywords": [
+		"task",
+		"asynchronous",
+		"queue",
+		"resource bounded"
+	],
+	"dependencies": {},
+	"devDependencies": {
+		"babel-cli": "^6.9.0",
+		"babel-preset-es2015": "^6.9.0",
+		"babel-preset-stage-0": "^6.5.0",
+		"chai": "^3.5.0",
+		"chai-as-promised": "^6.0.0",
+		"isparta": "^4.0.0",
+		"mocha": "^2.4.5"
+	},
+	"scripts": {
+		"compile": "./clean.sh && babel src --out-dir _compiled/ --source-maps",
+		"prepublish": "npm run compile",
+		"test": "mocha --compilers js:babel-core/register --reporter spec",
+		"test-nyan": "mocha --compilers js:babel-core/register --reporter nyan",
+		"test-reference": "mocha --compilers js:babel-core/register --reporter spec test-reference/mocha-reference.js",
+		"coverage": "./clean.sh && babel-node ./node_modules/.bin/isparta cover _mocha && open coverage/lcov-report/index.html"
+	},
+	"author": "Jeremy Chen <convexset@gmail.com> (https://github.com/convexset/)",
+	"license": "MIT"
 }
