@@ -9,6 +9,7 @@ chai.use(require('chai-as-promised'));
 // const assert = chai.assert;
 const expect = chai.expect;
 
+
 const _ = require('underscore');
 const createAsyncTaskManager = require('../src')(_);
 // const AsyncTaskManagerUtilities = require('../src/utilities.js')(_);
@@ -60,15 +61,6 @@ describe('createAsyncTaskManager bare basics', () => {
 
 		expect(rCopy).to.deep.equal(atm.totalResources);
 		expect(rCopy).to.deep.equal(atm.currentResources);
-	});
-});
-
-describe('promise testing', () => {
-	it('simple promise tests', () => {
-		return Promise.all([
-			expect(Promise.resolve(5)).to.eventually.be.equal(5),
-			// expect(new Promise(resolve => setTimeout(() => resolve(2), 10))).to.eventually.be.equal(5) // will fail
-		]);
 	});
 });
 
