@@ -5,8 +5,6 @@ module.exports = function initAsyncTaskManager(_) {
 		createObjectPropertyGetter,
 	} = require('./utilities.js')(_);
 
-	let id = 1000;
-
 	const _atm = function AsyncTaskManager() {};
 
 	function createAsyncTaskManager({

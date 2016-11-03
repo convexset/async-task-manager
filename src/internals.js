@@ -65,7 +65,7 @@ module.exports = function generateInternals(_, internals) {
 			.catch(error => {
 				// Pre-reqs definitively won't complete
 				taskDescription.reject(error);
-				LOG('ERROR IN PROMISE IN ADDTASK.')
+				LOG('ERROR IN PROMISE IN ADDTASK.');
 			});
 
 		return new Promise((resolve, reject) => {
@@ -78,18 +78,15 @@ module.exports = function generateInternals(_, internals) {
 
 	function pendingTasksUpdate() {
 		LOG('PENDING TASKS LENGTH ', internals.pendingTasks.length);
-		const newlyReadyTasks = internals.pendingTasks.filter(x => {
+		const newlyReadyTasks = [];
+		internals.pendingTasks.forEach(x => {
 			if (x.inputsResolved) {
-				return x;
+				newlyReadyTasks.push(x);
+				internals.pendingTasks.splice(internals.pendingTasks.indexOf(x), 1);
 			}
 		});
 		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION', newlyReadyTasks);
 		LOG('NEWLY READY TASKS TASK LENGTH', newlyReadyTasks.length);
-		internals.pendingTasks.forEach(x => {
-			if (x.inputsResolved) {
-				internals.pendingTasks.shift();
-			}
-		});
 		LOG('PENDING TASK UPDATED', internals.pendingTasks);
 		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
 		internals.readyTasks.push(...newlyReadyTasks);

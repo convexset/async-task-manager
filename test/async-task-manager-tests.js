@@ -27,7 +27,7 @@ function makePromiseWithControlledResolution(resolveValue = true, rejectValue = 
 	return ret;
 }
 
-xdescribe('createAsyncTaskManager bare basics', () => {
+describe('createAsyncTaskManager bare basics', () => {
 	it('createAsyncTaskManager is a function', () => {
 		expect(_.isFunction(createAsyncTaskManager)).to.be.true;
 	});
@@ -210,7 +210,7 @@ describe('createAsyncTaskManager function test', () => {
 	});
 });
 
-describe('createAsyncTaskManager random-tests.js', () => {
+describe('createAsyncTaskManager dynamically testing prereq constraint.js', () => {
 	const atm = createAsyncTaskManager({
 		resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
 	});
@@ -223,7 +223,7 @@ describe('createAsyncTaskManager random-tests.js', () => {
 
 	function generateTask(id) {
 		return function someTask(inputs = {}) {
-			console.log(`[${id}] Start`);
+			// console.log(`[${id}] Start`);
 			eventLog.push({
 				id: id,
 				ts: new Date(),
@@ -233,7 +233,7 @@ describe('createAsyncTaskManager random-tests.js', () => {
 
 			return new Promise(resolve => {
 				setTimeout(() => {
-					console.log(`[${id}] End`);
+					// console.log(`[${id}] End`);
 					const returnValue = Math.floor(1000 * Math.random());
 					eventLog.push({
 						id: id,
@@ -247,49 +247,54 @@ describe('createAsyncTaskManager random-tests.js', () => {
 		};
 	}
 
+	function returnItemsWithProbability(p) {
+		return () => Math.random() < p;
+	}
+
 	function generateInput() {
-		let input = {};
+		let input = [];
 		if (tasksHistory.length === 0) {
-			input = {};
+			input = [];
 		} else {
-			const numberOfInputs = _.random(0, tasksHistory.length - 1);
 			const tasksHistoryCopy = tasksHistory.slice();
-			for (let i = 0; i < numberOfInputs; i++) {
-				const idx = _.random(0, tasksHistoryCopy.length - 1);
-				input[tasksHistoryCopy[idx].taskId] = tasksHistoryCopy[idx].newTaskPromise;
-				console.log('taskhistory inside coadsfa ', tasksHistoryCopy[idx]);
-				// input.push(tasksHistoryCopy[idx]);
-				// console.log('input[idx]+1] ', input[idx + 1]);
-				tasksHistoryCopy.splice(idx, 1);
-			}
+			input = tasksHistoryCopy.filter(returnItemsWithProbability(0.3));
+			// console.log('input ', input);
 		}
-		// console.log('input ', input);
 		return input;
 	}
 
-	for (let x = 0; x < 5; x++) {
-		let taskId = x + 1;
-		console.log('looper ',taskId);
-		const newTask = generateTask(taskId);
+	const tdlist = [];
+	_.times(5, idx => {
+		const taskId = idx + 1; // 1 through 5
+		// console.log('looper ', taskId);
+		// const newTask = generateTask(taskId); //new task is a function
 		const input = generateInput();
+		// console.log('input adsfasdf ', input);
+		let inputPromises = input.map(x => {
+			return x.newTaskPromise;
+		});
+		inputPromises = _.object(_.range(inputPromises.length), inputPromises);
+		const inputIds = input.map(x => {
+			return x.taskId;
+		});
 		const taskDescription = {
 			id: taskId,
-			inputs: input,
-			task: newTask,
+			inputs: inputPromises,
+			task: generateTask(taskId),
 			resources: { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) },
-			priority: _.random(1, 10)
+			priority: 1
 		};
 		const newTaskPromise = atm.addTask(taskDescription);
+		tdlist.push(taskDescription);
 		tasksHistory.push({ newTaskPromise, taskId });
-		prereqList[taskDescription.id] = input;
-	}
+		prereqList[taskDescription.id] = inputIds;
+	});
 
-
-	console.log('prereqList ', prereqList);
+	// console.log('prereqList ', prereqList);
 	_.each(prereqList, (v, k) => {
-		it(`tasks ${Object.keys(v)} before task ${k}`, done => {
+		it(`tasks ${v} before task ${k}`, done => {
 			setTimeout(() => {
-				console.log('EVENT LOG ', eventLog);
+				// console.log('EVENT LOG ', eventLog);
 				let executionOrder = eventLog.filter(x => {
 					if (x.event === 'end') {
 						return x;
@@ -298,225 +303,36 @@ describe('createAsyncTaskManager random-tests.js', () => {
 				executionOrder = executionOrder.map(x => {
 					return x.id;
 				});
-				if (Object.keys(v).length > 0) {
-					k = parseInt(k);
-					const taskIndexInExecutionOrder = executionOrder.indexOf(k);
-					console.log('adsfadsfasdf ', executionOrder.indexOf(k));
-					console.log('EXECUTION ORDER ', executionOrder);
-					console.log('task number ', k);
-					console.log(typeof k, executionOrder.map(x => typeof x));
-					expect(taskIndexInExecutionOrder).to.not.eq(-1);
-					console.log(typeof v);
-					console.log('v', v);
-					const executionOrderCopy = executionOrder.slice();
-					executionOrderCopy.splice(taskIndexInExecutionOrder + 1);
-					// expect(1).to.eq(2);
-					_.forEach(v, (v,k) => {
-						k = parseInt(k);
-						console.log('smells like teen spirit ');
-						expect(executionOrderCopy.indexOf(k)).to.not.eq(-1);
-					});
-				}
-				done();
-			}, 100);
-		});
-	});
-});
-
-
-//=========================================================
-/*
-	function track(taskDescription, task) {
-		const t = task;
-		const taskInputs = taskDescription.inputs;
-		const eventId = taskDescription.id;
-		const eventLogItem = {
-			t,
-			taskInputs,
-			id: `${eventId}`,
-			type: 'Start',
-			date: new Date()
-		};
-		eventLog.push(eventLogItem);
-		console.log('eventLogItem.taskInputs ', _.toArray(eventLogItem.taskInputs));
-		setTimeout(() => {
-			Promise.all(_.toArray(eventLogItem.taskInputs)).then( () => {
-				const completedTasksEventItem = _.extend({}, eventLogItem);
-				completedTasksEventItem.type = 'End';
-				eventLog.push(completedTasksEventItem);
-			});
-		}, _.random(0, 10));
-	}
-
-	function generateRandomFunction() {
-		return function() {
-			return _.random(1, 10);
-		};
-	}
-
-	let taskDescriptionId = 1;
-
-	function generateRandomTaskDescription(tasksHistory) {
-		let input = {};
-		if (tasksHistory.length === 0) {
-			input = {};
-		} else {
-			const numberOfInputs = _.random(0, tasksHistory.length - 1);
-			const tasksHistoryCopy = tasksHistory.slice();
-			for (let i = 0; i < numberOfInputs; i++) {
-				const idx = _.random(0, tasksHistoryCopy.length - 1);
-				input[idx + 1] = tasksHistoryCopy[idx];
-				tasksHistoryCopy.splice(idx, 1);
-			}
-		}
-		const task = generateRandomFunction();
-		const taskDescription = {
-			id: taskDescriptionId,
-			inputs: input,
-			task: task,
-			resources: { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) },
-			priority: _.random(1, 10)
-		};
-		taskDescriptionId++;
-		return taskDescription;
-	}
-
-	let tasksHistory = [];
-
-	let prereqList = {};
-
-	function newTask() {
-		const taskDescription = generateRandomTaskDescription(tasksHistory);
-		return taskDescription;
-	}
-
-	function createAndAddRandomTaskToTaskManager() {
-		const taskDescription = newTask();
-		prereqList[taskDescription.id] = Object.keys(taskDescription.inputs);
-		const newTaskPromise = atm.addTask(taskDescription);
-
-		tasksHistory.push(newTaskPromise);
-		track(taskDescription, newTaskPromise);
-	}
-
-
-	tasksHistory = [];
-	eventLog = [];
-
-	prereqList = {};
-	for (let c = 0; c < 5; c++) {
-		createAndAddRandomTaskToTaskManager();
-	}
-	console.log('tasksHistory ', tasksHistory);
-
-
-	// before(() => {
-	// 	Object.keys(prereqList).forEach(x => {
-	// 		console.log('testingt it ', x);
-	// 		it('testing it generation', () => {
-	// 			expect(true).to.be(true);
-	// 		});
-	// 	});
-	// });
-
-	// it('adding multiple task to the taskManager adds multiple task to the taskHistory', (done) => {
-	// 	createAndAddRandomTaskToTaskManager(); // 1
-	// 	createAndAddRandomTaskToTaskManager();
-	// 	createAndAddRandomTaskToTaskManager();
-	// 	createAndAddRandomTaskToTaskManager();
-	// 	createAndAddRandomTaskToTaskManager(); // 5
-	// 	expect(tasksHistory.length).to.eq(5);
-	// 	setTimeout(() => {
-	// 		// expect(eventLog.length).to.eq(10);
-	// 		// expect(eventLog[1].type).to.eq('Start');
-	// 		// expect(eventLog[4].type).to.eq('Start');
-	// 		// expect(eventLog[6].type).to.eq('End');
-	// 		// expect(eventLog[9].type).to.eq('End');
-	// 		// console.log('tasksHistory ', tasksHistory);
-	// 		// console.log('eventLogList ', eventLog);
-	// 		console.log('preReqList ', prereqList);
-	// 		done();
-	// 	}, 200);
-	// });
-	//
-
-
-	// setTimeout(() => {
-
-	_.each(prereqList, (v, k) => {
-		it(`tasks ${v} before task ${k}`, done => {
-			setTimeout(() => {
-				// console.log('tasksHistory ', tasksHistory);
-				let executionOrder = _.filter(eventLog, x => {
-					if (x.type === 'End') {
-						return x.id;
-					}
-				});
-				executionOrder = _.map(executionOrder, x => {
-					return x.id;
-				});
-				// console.log('TASK EVENTS ', eventLog);
-				console.log('EXECUTION ORDER', executionOrder);
-				console.log(`key ${k} and value ${v}`);
 				if (v.length > 0) {
-					const taskIndexInExecutionOrder = _.indexOf(executionOrder, k);
-					expect(taskIndexInExecutionOrder).to.not.eq(-1);
+					k = parseInt(k, 10);
+					const taskIndexInExecutionOrder = executionOrder.indexOf(k);
+					// console.log('adsfadsfasdf ', executionOrder.indexOf(k));
+					// console.log('EXECUTION ORDER ', executionOrder);
+					// console.log('task number ', k);
+					// console.log(typeof k, executionOrder.map(x => typeof x));
+					// expect(taskIndexInExecutionOrder).to.not.eq(-1);
+					// console.log(typeof v);
+					// console.log('v', v);
 					const executionOrderCopy = executionOrder.slice();
 					executionOrderCopy.splice(taskIndexInExecutionOrder + 1);
 					// expect(1).to.eq(2);
 					v.forEach(x => {
-						expect(_.indexOf(executionOrderCopy, x)).to.not.eq(-1);
+						// console.log(x);
+						x = parseInt(x, 10);
+						// console.log('smells like teen spirit ');
+						// console.log(typeof k, typeof x, executionOrderCopy.map(x => typeof x));
+						// console.log(executionOrderCopys);
+						// console.log(x);
+						// console.log(executionOrderCopy.includes(x));
+						expect(executionOrderCopy.indexOf(x)).to.not.eq(-1);
 					});
 				}
 				done();
 			}, 50);
 		});
 	});
-	// }, 50);
-
-	// it('this does nothing', () => {
-	// 	expect(1).to.eq(1);
-	// });
-
-	xit('prerequisite constraint is maintained ', (done) => {
-		for (let c = 0; c < 5; c++) {
-			createAndAddRandomTaskToTaskManager();
-		}
-		// having the right number of elements in prerequisite list
-		expect(Object.keys(prereqList).length).to.eq(5);
-		setTimeout(() => {
-			let executionOrder = _.filter(eventLog, x => {
-				if (x.type === 'End') {
-					return x;
-				}
-			});
-			executionOrder = _.map(executionOrder, x => {
-				return x.id;
-			});
-			// console.log(executionOrder);
-			_.each(prereqList, (v, k) => {
-				if (v.length > 0) {
-					// console.log(k, executionOrder);
-					// console.log(`id: ${k}, prereq: ${v}`);
-					// console.log('executionOrder ', executionOrder);
-
-					const taskIndexInExecutionOrder = _.indexOf(executionOrder, k);
-					expect(taskIndexInExecutionOrder).to.not.eq(-1);
-					const executionOrderCopy = executionOrder.slice();
-					executionOrderCopy.splice(taskIndexInExecutionOrder + 1);
-					// console.log('key and value', (v, k));
-					v.forEach(x => {
-						// console.log('failing in forEach');
-						// console.log(x, executionOrderCopy);
-						expect(_.indexOf(executionOrderCopy, x)).to.not.eq(-1);
-					});
-				}
-				// });
-			});
-			done();
-		}, 1000);
-	});
 });
-*/
+
+
 // execute utilities tests
 require('./utilities-tests.js');
