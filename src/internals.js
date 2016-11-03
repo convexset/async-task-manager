@@ -97,7 +97,7 @@ module.exports = function generateInternals(_, internals) {
 
 	function readyTasksUpdate() {
 		LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
-		while (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
+		if (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
 			internals.readyTasks.sort(sortBy([
 				['priority: 1'],
 				['creationTime: 1']
@@ -112,12 +112,12 @@ module.exports = function generateInternals(_, internals) {
 				const currentTask = internals.readyTasks.shift(); // allocate resource to the first element in the ready list and move it to the executing list
 				const currentInput = currentTask.inputsResolved;
 				// execute the new task in the executing list and return a promise resolved with the returned value
+				internals.currentResources = objectSubtract(internals.currentResources, currentTask.resources);
 				runPromisified(currentTask.task, currentInput)
 					.then(x => {
 						// update current resources available
 						LOG('READY TASK LIST AFTER SHIFTING TASK TO EXECUTING LIST ', internals.readyTasks);
 						LOG('READY TASK LENGTH', internals.readyTasks.length);
-						internals.currentResources = objectSubtract(internals.currentResources, currentTask.resources);
 						LOG('RESOURCES AFTER MOVING TASK TO EXECUTING LIST ', internals.currentResources);
 						internals.executingTasks.push(currentTask);
 						LOG('EXECUTING TASKS LIST AFTER PUSH', internals.executingTasks);
@@ -130,12 +130,14 @@ module.exports = function generateInternals(_, internals) {
 						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
 						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION', internals.executingTasks);
 						LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
+						pendingTasksUpdate();
 					}).catch(z => {
 						console.log('inside catch', z);
-					})
-					.then( /* free */ () => {
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
-					});
+						pendingTasksUpdate();
+					})
+					// .catch( /* free */ () => {
+					// });
 			} else {
 				LOG('NOT ENOUGH RESOURCES YET');
 				LOG('CURRENT EXECUTING TASK: ', internals.executingTasks);

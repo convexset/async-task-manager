@@ -11,11 +11,14 @@ chai.use(require('chai-as-promised'));
 // const assert = chai.assert;
 const expect = chai.expect;
 
-
 const _ = require('underscore');
 const createAsyncTaskManager = require('../src')(_);
 // const AsyncTaskManagerUtilities = require('../src/utilities.js')(_);
 
+const {
+	objectAdd,
+	objectSubtract,
+} = require('../src/utilities')(_);
 
 function makePromiseWithControlledResolution(resolveValue = true, rejectValue = false) {
 	const ret = {};
@@ -210,7 +213,7 @@ describe('createAsyncTaskManager function test', () => {
 	});
 });
 
-describe('createAsyncTaskManager dynamically testing prereq constraint.js', () => {
+describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
 	const atm = createAsyncTaskManager({
 		resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
 	});
@@ -221,24 +224,26 @@ describe('createAsyncTaskManager dynamically testing prereq constraint.js', () =
 
 	// let taskId = 0;
 
-	function generateTask(id) {
+	function generateTask(id, resources) {
 		return function someTask(inputs = {}) {
-			// console.log(`[${id}] Start`);
+			console.log(`[${id}] Start`);
 			eventLog.push({
 				id: id,
 				ts: new Date(),
 				event: 'start',
-				inputs: inputs
+				inputs: inputs,
+				resources: resources
 			});
 
 			return new Promise(resolve => {
 				setTimeout(() => {
-					// console.log(`[${id}] End`);
+					console.log(`[${id}] End`);
 					const returnValue = Math.floor(1000 * Math.random());
 					eventLog.push({
 						id: id,
 						ts: new Date(),
 						event: 'end',
+						resources: resources,
 						returnValue: returnValue
 					});
 					resolve(returnValue);
@@ -268,6 +273,7 @@ describe('createAsyncTaskManager dynamically testing prereq constraint.js', () =
 		const taskId = idx + 1; // 1 through 5
 		// console.log('looper ', taskId);
 		// const newTask = generateTask(taskId); //new task is a function
+		const resources = { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) };
 		const input = generateInput();
 		// console.log('input adsfasdf ', input);
 		let inputPromises = input.map(x => {
@@ -280,8 +286,8 @@ describe('createAsyncTaskManager dynamically testing prereq constraint.js', () =
 		const taskDescription = {
 			id: taskId,
 			inputs: inputPromises,
-			task: generateTask(taskId),
-			resources: { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) },
+			task: generateTask(taskId, resources),
+			resources: resources,
 			priority: 1
 		};
 		const newTaskPromise = atm.addTask(taskDescription);
@@ -331,8 +337,30 @@ describe('createAsyncTaskManager dynamically testing prereq constraint.js', () =
 			}, 50);
 		});
 	});
-});
 
+	it('all resource constraints are satisfied', done => {
+		setTimeout(() => {
+			let currentResources = atm.currentResources;
+			// console.log(eventLog.length);
+			// console.log(currentResources);
+			// console.log(eventLog);
+			eventLog.forEach(x => {
+				// console.log(eventLog.length);
+				// console.log('x sdfads ', x);
+				if (x.event === 'start') {
+					currentResources = objectSubtract(currentResources, x.resources);
+					// console.log(currentResources);
+					const isResourceConstraintRespected = _.filter(currentResources, (v, k) => v < 0).length === 0;
+					expect(isResourceConstraintRespected).to.eq(true);
+				} else if (x.event === 'end') {
+					currentResources = objectAdd(currentResources, x.resources);
+					// console.log(currentResources);
+				}
+			});
+			done();
+		}, 500);
+	});
+});
 
 // execute utilities tests
 require('./utilities-tests.js');

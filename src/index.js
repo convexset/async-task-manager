@@ -20,7 +20,7 @@ module.exports = function initAsyncTaskManager(_) {
 			executingTasks: [],
 			readyTasks: [],
 			pendingTasks: [],
-			DEBUG_MODE: false
+			DEBUG_MODE: true
 		};
 		createObjectPropertyGetter(atm, 'totalResources', internals.totalResources);
 		createObjectPropertyGetter(atm, 'currentResources', internals.currentResources);
