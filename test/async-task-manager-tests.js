@@ -154,7 +154,7 @@ describe('createAsyncTaskManager function test', () => {
 		setTimeout(() => {
 			expect(asyncTaskManager.pendingTasks.length).to.deep.equal(1);
 			expect(asyncTaskManager.readyTasks.length).to.deep.equal(0);
-			expect(asyncTaskManager.executingTasks.length).to.deep.equal(0);
+			expect(asyncTaskManager.executingTasks.length).to.deep.equal(1);
 			done();
 		}, 10);
 	});
@@ -163,14 +163,14 @@ describe('createAsyncTaskManager function test', () => {
 	// --> Task B starts (check 10 ms after resolving)
 	// --> Task A is no longer in executing list (check 1ms after resolving)
 
-	it('taskAlphaPromiseresolves resolves; Task A Starts', (done) => {
+	it('taskAlphaPromiseresolves resolves; Task B Starts', (done) => {
 		taskAlphaPromise.then(value => {
 			setTimeout(() => {
 				try {
 					expect(value).to.be.deep.equal('ab');
 					expect(asyncTaskManager.pendingTasks.length).to.be.deep.equal(0);
 					expect(asyncTaskManager.readyTasks.length).to.be.deep.equal(0);
-					expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(0);
+					expect(asyncTaskManager.executingTasks.length).to.be.deep.equal(1);
 					done();
 				} catch (err) {
 					done(err);
@@ -212,155 +212,156 @@ describe('createAsyncTaskManager function test', () => {
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(0);
 	});
 });
+_.times(20, () => {
+	describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
+		const atm = createAsyncTaskManager({
+			resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
+		});
 
-describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
-	const atm = createAsyncTaskManager({
-		resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
-	});
+		const eventLog = [];
+		const tasksHistory = [];
+		const prereqList = {};
 
-	const eventLog = [];
-	const tasksHistory = [];
-	const prereqList = {};
+		// let taskId = 0;
 
-	// let taskId = 0;
+		function generateTask(id, resources) {
+			return function someTask(inputs = {}) {
+				// console.log(`[${id}] Start`);
+				eventLog.push({
+					id: id,
+					ts: new Date(),
+					event: 'start',
+					inputs: inputs,
+					resources: resources
+				});
 
-	function generateTask(id, resources) {
-		return function someTask(inputs = {}) {
-			console.log(`[${id}] Start`);
-			eventLog.push({
-				id: id,
-				ts: new Date(),
-				event: 'start',
-				inputs: inputs,
-				resources: resources
-			});
-
-			return new Promise(resolve => {
-				setTimeout(() => {
-					console.log(`[${id}] End`);
-					const returnValue = Math.floor(1000 * Math.random());
-					eventLog.push({
-						id: id,
-						ts: new Date(),
-						event: 'end',
-						resources: resources,
-						returnValue: returnValue
-					});
-					resolve(returnValue);
-				}, 100 * Math.random());
-			});
-		};
-	}
-
-	function returnItemsWithProbability(p) {
-		return () => Math.random() < p;
-	}
-
-	function generateInput() {
-		let input = [];
-		if (tasksHistory.length === 0) {
-			input = [];
-		} else {
-			const tasksHistoryCopy = tasksHistory.slice();
-			input = tasksHistoryCopy.filter(returnItemsWithProbability(0.3));
-			// console.log('input ', input);
+				return new Promise(resolve => {
+					setTimeout(() => {
+						// console.log(`[${id}] End`);
+						const returnValue = Math.floor(1000 * Math.random());
+						eventLog.push({
+							id: id,
+							ts: new Date(),
+							event: 'end',
+							resources: resources,
+							returnValue: returnValue
+						});
+						resolve(returnValue);
+					}, 100 * Math.random());
+				});
+			};
 		}
-		return input;
-	}
 
-	const tdlist = [];
-	_.times(5, idx => {
-		const taskId = idx + 1; // 1 through 5
-		// console.log('looper ', taskId);
-		// const newTask = generateTask(taskId); //new task is a function
-		const resources = { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) };
-		const input = generateInput();
-		// console.log('input adsfasdf ', input);
-		let inputPromises = input.map(x => {
-			return x.newTaskPromise;
-		});
-		inputPromises = _.object(_.range(inputPromises.length), inputPromises);
-		const inputIds = input.map(x => {
-			return x.taskId;
-		});
-		const taskDescription = {
-			id: taskId,
-			inputs: inputPromises,
-			task: generateTask(taskId, resources),
-			resources: resources,
-			priority: 1
-		};
-		const newTaskPromise = atm.addTask(taskDescription);
-		tdlist.push(taskDescription);
-		tasksHistory.push({ newTaskPromise, taskId });
-		prereqList[taskDescription.id] = inputIds;
-	});
+		function returnItemsWithProbability(p) {
+			return () => Math.random() < p;
+		}
 
-	// console.log('prereqList ', prereqList);
-	_.each(prereqList, (v, k) => {
-		it(`tasks ${v} before task ${k}`, done => {
+		function generateInput() {
+			let input = [];
+			if (tasksHistory.length === 0) {
+				input = [];
+			} else {
+				const tasksHistoryCopy = tasksHistory.slice();
+				input = tasksHistoryCopy.filter(returnItemsWithProbability(0.3));
+				// console.log('input ', input);
+			}
+			return input;
+		}
+
+		const tdlist = [];
+		_.times(5, idx => {
+			const taskId = idx + 1; // 1 through 5
+			// console.log('looper ', taskId);
+			// const newTask = generateTask(taskId); //new task is a function
+			const resources = { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) };
+			const input = generateInput();
+			// console.log('input adsfasdf ', input);
+			let inputPromises = input.map(x => {
+				return x.newTaskPromise;
+			});
+			inputPromises = _.object(_.range(inputPromises.length), inputPromises);
+			const inputIds = input.map(x => {
+				return x.taskId;
+			});
+			const taskDescription = {
+				id: taskId,
+				inputs: inputPromises,
+				task: generateTask(taskId, resources),
+				resources: resources,
+				priority: 1
+			};
+			const newTaskPromise = atm.addTask(taskDescription);
+			tdlist.push(taskDescription);
+			tasksHistory.push({ newTaskPromise, taskId });
+			prereqList[taskDescription.id] = inputIds;
+		});
+
+		// console.log('prereqList ', prereqList);
+		_.each(prereqList, (v, k) => {
+			it(`tasks ${v} before task ${k}`, done => {
+				setTimeout(() => {
+					// console.log('EVENT LOG ', eventLog);
+					let executionOrder = eventLog.filter(x => {
+						if (x.event === 'end') {
+							return x;
+						}
+					});
+					executionOrder = executionOrder.map(x => {
+						return x.id;
+					});
+					if (v.length > 0) {
+						k = parseInt(k, 10);
+						const taskIndexInExecutionOrder = executionOrder.indexOf(k);
+						// console.log('adsfadsfasdf ', executionOrder.indexOf(k));
+						// console.log('EXECUTION ORDER ', executionOrder);
+						// console.log('task number ', k);
+						// console.log(typeof k, executionOrder.map(x => typeof x));
+						expect(taskIndexInExecutionOrder).to.not.eq(-1);
+						// console.log(typeof v);
+						// console.log('v', v);
+						const executionOrderCopy = executionOrder.slice();
+						// console.log('executionOrderCopy ', executionOrderCopy);
+						executionOrderCopy.splice(taskIndexInExecutionOrder + 1);
+						// expect(1).to.eq(2);
+						v.forEach(x => {
+							// console.log(x);
+							x = parseInt(x, 10);
+							// console.log('smells like teen spirit ');
+							// console.log(typeof k, typeof x, executionOrderCopy.map(x => typeof x));
+							// console.log(executionOrderCopys);
+							// console.log(x);
+							// console.log(executionOrderCopy.includes(x));
+							expect(executionOrderCopy.indexOf(x)).to.not.eq(-1);
+						});
+					}
+					done();
+				}, 50);
+			});
+		});
+
+		it('all resource constraints are satisfied', done => {
 			setTimeout(() => {
-				// console.log('EVENT LOG ', eventLog);
-				let executionOrder = eventLog.filter(x => {
-					if (x.event === 'end') {
-						return x;
+				let currentResources = atm.currentResources;
+				// console.log(eventLog.length);
+				// console.log(currentResources);
+				// console.log(eventLog);
+				eventLog.forEach(x => {
+					// console.log(eventLog.length);
+					// console.log('x sdfads ', x);
+					if (x.event === 'start') {
+						currentResources = objectSubtract(currentResources, x.resources);
+						// console.log(currentResources);
+						const isResourceConstraintRespected = _.filter(currentResources, (v, k) => v < 0).length === 0;
+						expect(isResourceConstraintRespected).to.eq(true);
+					} else if (x.event === 'end') {
+						currentResources = objectAdd(currentResources, x.resources);
+						// console.log(currentResources);
 					}
 				});
-				executionOrder = executionOrder.map(x => {
-					return x.id;
-				});
-				if (v.length > 0) {
-					k = parseInt(k, 10);
-					const taskIndexInExecutionOrder = executionOrder.indexOf(k);
-					// console.log('adsfadsfasdf ', executionOrder.indexOf(k));
-					// console.log('EXECUTION ORDER ', executionOrder);
-					// console.log('task number ', k);
-					// console.log(typeof k, executionOrder.map(x => typeof x));
-					// expect(taskIndexInExecutionOrder).to.not.eq(-1);
-					// console.log(typeof v);
-					// console.log('v', v);
-					const executionOrderCopy = executionOrder.slice();
-					executionOrderCopy.splice(taskIndexInExecutionOrder + 1);
-					// expect(1).to.eq(2);
-					v.forEach(x => {
-						// console.log(x);
-						x = parseInt(x, 10);
-						// console.log('smells like teen spirit ');
-						// console.log(typeof k, typeof x, executionOrderCopy.map(x => typeof x));
-						// console.log(executionOrderCopys);
-						// console.log(x);
-						// console.log(executionOrderCopy.includes(x));
-						expect(executionOrderCopy.indexOf(x)).to.not.eq(-1);
-					});
-				}
 				done();
-			}, 50);
+			}, 100);
 		});
 	});
-
-	it('all resource constraints are satisfied', done => {
-		setTimeout(() => {
-			let currentResources = atm.currentResources;
-			// console.log(eventLog.length);
-			// console.log(currentResources);
-			// console.log(eventLog);
-			eventLog.forEach(x => {
-				// console.log(eventLog.length);
-				// console.log('x sdfads ', x);
-				if (x.event === 'start') {
-					currentResources = objectSubtract(currentResources, x.resources);
-					// console.log(currentResources);
-					const isResourceConstraintRespected = _.filter(currentResources, (v, k) => v < 0).length === 0;
-					expect(isResourceConstraintRespected).to.eq(true);
-				} else if (x.event === 'end') {
-					currentResources = objectAdd(currentResources, x.resources);
-					// console.log(currentResources);
-				}
-			});
-			done();
-		}, 500);
-	});
 });
-
 // execute utilities tests
 require('./utilities-tests.js');

@@ -18,7 +18,7 @@ module.exports = function generateInternals(_, internals) {
 	function LOG() {
 		if (internals.DEBUG_MODE) {
 			const args = _.toArray(arguments);
-			args.unshift(`[AsyncTaskManager|${internals.id}]`);
+			args.unshift(`${new Date()} [AsyncTaskManager|${internals.id}]`);
 			console.log.apply(console, args); // console.log(...args)
 		}
 	}
@@ -52,8 +52,8 @@ module.exports = function generateInternals(_, internals) {
 
 		// immediately adding taskDescription to a pending list
 		internals.pendingTasks.push(taskDescription);
-		LOG('PENDING TASK ON ADDTASK', internals.pendingTasks);
-		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
+		LOG('PENDING TASK LIST AFTER ADDTASK IS CALLED: ', internals.pendingTasks);
+		LOG('PENDING TASK LENGTH AFTER ADDTASK IS CALLED: ', internals.pendingTasks.length);
 		promiseAll_ObjectEdition(inputs)
 			.then(inputsForTask => {
 				// Pre-reqs complete: Inputs available
@@ -65,7 +65,7 @@ module.exports = function generateInternals(_, internals) {
 			.catch(error => {
 				// Pre-reqs definitively won't complete
 				taskDescription.reject(error);
-				LOG('ERROR IN PROMISE IN ADDTASK.');
+				LOG('ERROR IN PREREQUISITE PROMISE');
 			});
 
 		return new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ module.exports = function generateInternals(_, internals) {
 	}
 
 	function pendingTasksUpdate() {
-		LOG('PENDING TASKS LENGTH ', internals.pendingTasks.length);
+		LOG('PENDING TASKS LENGTH INSIDE PENDINGTASKSUPDATE CALL: ', internals.pendingTasks.length);
 		const newlyReadyTasks = [];
 		internals.pendingTasks.forEach(x => {
 			if (x.inputsResolved) {
@@ -85,68 +85,62 @@ module.exports = function generateInternals(_, internals) {
 				internals.pendingTasks.splice(internals.pendingTasks.indexOf(x), 1);
 			}
 		});
-		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION', newlyReadyTasks);
-		LOG('NEWLY READY TASKS TASK LENGTH', newlyReadyTasks.length);
-		LOG('PENDING TASK UPDATED', internals.pendingTasks);
-		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
+		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION; NEWLY READY TASKS LIST: ', newlyReadyTasks);
+		LOG('NEWLY READY TASKS LIST LENGTH: ', newlyReadyTasks.length);
+		LOG('PENDING TASK LIST AFTER IT IS UPDATED: ', internals.pendingTasks);
+		LOG('PENDING TASK LENGTH AFTER IT IS UPDATED:', internals.pendingTasks.length);
 		internals.readyTasks.push(...newlyReadyTasks);
-		LOG('READY TASK UPDATED', internals.readyTasks);
-		LOG('READY TASK LENGTH', internals.readyTasks.length);
+		LOG('READY TASK LIST UPDATED BY ADDING THE NEWLY READY TASKS TO IT; READY TASK LIST: ', internals.readyTasks);
+		LOG('READY TASK LENGTH AFTER UPDATING: ', internals.readyTasks.length);
 		readyTasksUpdate();
 	}
 
 	function readyTasksUpdate() {
-		LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
+		LOG('INSIDE READY TASK UPDATE CALL');
 		if (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
 			internals.readyTasks.sort(sortBy([
 				['priority: 1'],
 				['creationTime: 1']
 			]));
-			LOG('SORTED LIST OF READY TASKS', internals.readyTasks);
-			LOG('READY TASK LENGTH', internals.readyTasks.length);
-			// check for resource availability to allocate to task
+			LOG('SORTED LIST OF READY TASKS: ', internals.readyTasks);
+			LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
 			const resourceRequiredForTask = internals.readyTasks[0].resources;
 			const tempResourceList = objectSubtract(internals.currentResources, resourceRequiredForTask);
-			LOG('CHECK IF THERE ARE ENOUGH RESOURCES ', tempResourceList);
+			LOG('THERE ARE ENOUGH RESOURCES IF ALL VALUES IN FOLLOWING OBJECT IS GREATER THAN 0 : ', tempResourceList);
 			if (_.filter(tempResourceList, (v, k) => v < 0).length === 0) { // there are enough resources
-				const currentTask = internals.readyTasks.shift(); // allocate resource to the first element in the ready list and move it to the executing list
+				const currentTask = internals.readyTasks.shift();
 				const currentInput = currentTask.inputsResolved;
-				// execute the new task in the executing list and return a promise resolved with the returned value
 				internals.currentResources = objectSubtract(internals.currentResources, currentTask.resources);
+				LOG('RESOURCES AFTER MOVING TASK TO EXECUTING LIST ', internals.currentResources);
+				internals.executingTasks.push(currentTask);
+				LOG('EXECUTING TASKS LIST AFTER PUSH', internals.executingTasks);
+				LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
+				LOG('READY TASK LIST AFTER SHIFTING TASK TO EXECUTING LIST ', internals.readyTasks);
+				LOG('READY TASK LIST LENGTH AFTER SHIFTING TASK TO EXECUTING LIST', internals.readyTasks.length);
 				runPromisified(currentTask.task, currentInput)
 					.then(x => {
 						// update current resources available
-						LOG('READY TASK LIST AFTER SHIFTING TASK TO EXECUTING LIST ', internals.readyTasks);
-						LOG('READY TASK LENGTH', internals.readyTasks.length);
-						LOG('RESOURCES AFTER MOVING TASK TO EXECUTING LIST ', internals.currentResources);
-						internals.executingTasks.push(currentTask);
-						LOG('EXECUTING TASKS LIST AFTER PUSH', internals.executingTasks);
-						LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
-						LOG('PROMISE FOR ELEMENT IN EXECUTING TASK LIST ', currentTask);
 						currentTask.resolve(x);
 						// after execution is complete free resources and remove from executing list
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
-						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
+						LOG('RESOURCE LIST AFTER TASK COMPLETION: ', internals.currentResources);
 						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
-						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION', internals.executingTasks);
-						LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
+						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION: ', internals.executingTasks);
+						LOG('EXECUTING TASK LENGTH: ', internals.executingTasks.length);
 						pendingTasksUpdate();
 					}).catch(z => {
-						console.log('inside catch', z);
+						LOG('TASK EXECUTION FAILED, ERROR: ', z);
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
 						pendingTasksUpdate();
-					})
-					// .catch( /* free */ () => {
-					// });
+					});
 			} else {
-				LOG('NOT ENOUGH RESOURCES YET');
+				LOG('NOT ENOUGH RESOURCES YET, CURRENT RESOURCES: ', internals.currentResources);
 				LOG('CURRENT EXECUTING TASK: ', internals.executingTasks);
 			}
 		}
 	}
 
 	function resize(resources) {
-		LOG(internals.currentResources);
 		LOG('INSIDE RESIZE FUNCTION');
 		LOG('NEW RESOURCE LIST ', resources);
 		checkResources(resources);
