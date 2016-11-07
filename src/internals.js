@@ -1,6 +1,6 @@
 let nextATMId = 1;
 
-module.exports = function generateInternals(_, internals) {
+module.exports = function generateInternals(_, internals, dispatchThrottleIntervalInMs) {
 	const {
 		checkResources,
 		promiseAll_ObjectEdition,
@@ -19,7 +19,8 @@ module.exports = function generateInternals(_, internals) {
 		if (internals.DEBUG_MODE) {
 			const args = _.toArray(arguments);
 			args.unshift(`[AsyncTaskManager|${internals.id}]`);
-			console.log.apply(console, args); // console.log(...args)
+			// eslint-disable-next-line no-console
+			console.log(...args);
 		}
 	}
 
@@ -46,7 +47,7 @@ module.exports = function generateInternals(_, internals) {
 			resources,
 			priority,
 			creationTime: new Date(),
-			inputsResolved: null //remains null until inputs are resolved
+			inputsResolved: null // remains null until inputs are resolved
 		};
 		LOG('ADDING TASK', taskDescription);
 
@@ -59,12 +60,19 @@ module.exports = function generateInternals(_, internals) {
 				// Pre-reqs complete: Inputs available
 				// move task from pending list to ready list to await for resources
 				LOG('ENTERING PENDING TASK UPDATE FUNCTION; TASKDESCRIPTION: ', taskDescription);
+
+				// *** COMMENT *** Why not push to ready tasks here
+				// (*** PTU ***)
+
 				taskDescription.inputsResolved = inputsForTask;
 				pendingTasksUpdate();
 			})
 			.catch(error => {
 				// Pre-reqs definitively won't complete
 				taskDescription.reject(error);
+
+				// *** COMMENT *** test correctness of cascading error reporting
+
 				LOG('ERROR IN PROMISE IN ADDTASK.');
 			});
 
@@ -76,26 +84,7 @@ module.exports = function generateInternals(_, internals) {
 		});
 	}
 
-	function pendingTasksUpdate() {
-		LOG('PENDING TASKS LENGTH ', internals.pendingTasks.length);
-		const newlyReadyTasks = [];
-		internals.pendingTasks.forEach(x => {
-			if (x.inputsResolved) {
-				newlyReadyTasks.push(x);
-				internals.pendingTasks.splice(internals.pendingTasks.indexOf(x), 1);
-			}
-		});
-		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION', newlyReadyTasks);
-		LOG('NEWLY READY TASKS TASK LENGTH', newlyReadyTasks.length);
-		LOG('PENDING TASK UPDATED', internals.pendingTasks);
-		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
-		internals.readyTasks.push(...newlyReadyTasks);
-		LOG('READY TASK UPDATED', internals.readyTasks);
-		LOG('READY TASK LENGTH', internals.readyTasks.length);
-		readyTasksUpdate();
-	}
-
-	function readyTasksUpdate() {
+	function _readyTasksUpdate() {
 		LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
 		if (internals.readyTasks.length > 0) { // if there are elements in the ready list, sort
 			internals.readyTasks.sort(sortBy([
@@ -107,11 +96,15 @@ module.exports = function generateInternals(_, internals) {
 			// check for resource availability to allocate to task
 			const resourceRequiredForTask = internals.readyTasks[0].resources;
 			const tempResourceList = objectSubtract(internals.currentResources, resourceRequiredForTask);
+			// *** COMMENT *** write utility to check for non-negativity of resources; write a test or two for it
+			// isNonNegative(objectSubtract(internals.currentResources, resourceRequiredForTask))
 			LOG('CHECK IF THERE ARE ENOUGH RESOURCES ', tempResourceList);
 			if (_.filter(tempResourceList, (v, k) => v < 0).length === 0) { // there are enough resources
 				const currentTask = internals.readyTasks.shift(); // allocate resource to the first element in the ready list and move it to the executing list
 				const currentInput = currentTask.inputsResolved;
 				// execute the new task in the executing list and return a promise resolved with the returned value
+
+				// *** COMMENT *** re-use: clean up
 				internals.currentResources = objectSubtract(internals.currentResources, currentTask.resources);
 				runPromisified(currentTask.task, currentInput)
 					.then(x => {
@@ -126,24 +119,54 @@ module.exports = function generateInternals(_, internals) {
 						currentTask.resolve(x);
 						// after execution is complete free resources and remove from executing list
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
-						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
-						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
 						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION', internals.executingTasks);
 						LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
 						pendingTasksUpdate();
-					}).catch(z => {
+						// *** COMMENT *** use setTimeout(pendingTasksUpdate, 0)
+					})
+					.catch(z => {
 						console.log('inside catch', z);
+						// *** COMMENT *** need to reject for currentTask
+					})
+					.then(() => {
+						// like "finally"
+						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
+						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
 						pendingTasksUpdate();
-					})
-					// .catch( /* free */ () => {
-					// });
+						// *** COMMENT *** use setTimeout(pendingTasksUpdate, 0)
+					});
 			} else {
 				LOG('NOT ENOUGH RESOURCES YET');
 				LOG('CURRENT EXECUTING TASK: ', internals.executingTasks);
 			}
 		}
 	}
+
+	const readyTasksUpdate = _.throttle(_readyTasksUpdate, dispatchThrottleIntervalInMs);
+
+	function pendingTasksUpdate() {
+		// *** COMMENT *** what does this do?
+		LOG('PENDING TASKS LENGTH ', internals.pendingTasks.length);
+		const newlyReadyTasks = [];
+		internals.pendingTasks.forEach(x => {
+			// *** COMMENT *** move this...
+			if (x.inputsResolved) {
+				newlyReadyTasks.push(x);
+				internals.pendingTasks.splice(internals.pendingTasks.indexOf(x), 1);
+			}
+		});
+		LOG('NEWLY READY TASKS GENERATED AFTER FILTERING PENDING TASKS ON PREREQUISITE COMPLETION', newlyReadyTasks);
+		LOG('NEWLY READY TASKS TASK LENGTH', newlyReadyTasks.length);
+		LOG('PENDING TASK UPDATED', internals.pendingTasks);
+		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
+		// *** COMMENT *** move this... to (*** PTU ***)
+		internals.readyTasks.push(...newlyReadyTasks);
+		LOG('READY TASK UPDATED', internals.readyTasks);
+		LOG('READY TASK LENGTH', internals.readyTasks.length);
+		readyTasksUpdate();
+	}
+
 
 	function resize(resources) {
 		LOG(internals.currentResources);
@@ -165,6 +188,10 @@ module.exports = function generateInternals(_, internals) {
 			}
 		});
 		LOG('NEW TOTAL RESOURCES LIST', internals.totalResources);
+
+		// *** COMMENT *** check read tasks that cannot be executed with new total
+		// Decision: warn don't throw
+		// Move to pending... check again on resize
 	}
 
 	return {
