@@ -126,7 +126,7 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 					})
 					.then(() => {
 						// like "finally"
-						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
+						// internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
 						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
 						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);

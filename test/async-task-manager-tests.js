@@ -213,7 +213,7 @@ describe('createAsyncTaskManager function test', () => {
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(0);
 	});
 });
-_.times(5, () => {
+_.times(1, () => {
 	describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
 		const atm = createAsyncTaskManager({
 			resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
@@ -340,27 +340,24 @@ _.times(5, () => {
 			});
 		});
 
-		it('all resource constraints are satisfied', done => {
-			setTimeout(() => {
-				let currentResources = atm.currentResources;
+		it('all resource constraints are satisfied', () => {
+			let currentResources = atm.currentResources;
+			// console.log(eventLog.length);
+			// console.log(currentResources);
+			// console.log(eventLog);
+			eventLog.forEach(x => {
 				// console.log(eventLog.length);
-				// console.log(currentResources);
-				// console.log(eventLog);
-				eventLog.forEach(x => {
-					// console.log(eventLog.length);
-					// console.log('x sdfads ', x);
-					if (x.event === 'start') {
-						currentResources = objectSubtract(currentResources, x.resources);
-						console.log(currentResources);
-						const isResourceConstraintRespected = isNonNegative(currentResources);
-						expect(isResourceConstraintRespected).to.be.true;
-					} else if (x.event === 'end') {
-						currentResources = objectAdd(currentResources, x.resources);
-						// console.log(currentResources);
-					}
-				});
-				done();
-			}, 100);
+				// console.log('x sdfads ', x);
+				if (x.event === 'start') {
+					currentResources = objectSubtract(currentResources, x.resources);
+					// console.log('currentResources: ', currentResources);
+					const isResourceConstraintRespected = isNonNegative(currentResources);
+					expect(isResourceConstraintRespected).to.be.true;
+				} else if (x.event === 'end') {
+					currentResources = objectAdd(currentResources, x.resources);
+					// console.log(currentResources);
+				}
+			});
 		});
 	});
 });
