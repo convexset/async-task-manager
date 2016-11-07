@@ -1,3 +1,5 @@
+const generateATMInternals = require('./internals.js');
+
 module.exports = function initAsyncTaskManager(_) {
 	const {
 		checkResources,
@@ -20,6 +22,7 @@ module.exports = function initAsyncTaskManager(_) {
 			executingTasks: [],
 			readyTasks: [],
 			pendingTasks: [],
+			frozenTasks: [],
 			DEBUG_MODE: true
 		};
 		createObjectPropertyGetter(atm, 'totalResources', internals.totalResources);
@@ -27,8 +30,10 @@ module.exports = function initAsyncTaskManager(_) {
 		createArrayPropertyGetter(atm, 'readyTasks', internals.readyTasks);
 		createArrayPropertyGetter(atm, 'executingTasks', internals.executingTasks);
 		createArrayPropertyGetter(atm, 'pendingTasks', internals.pendingTasks);
+		createArrayPropertyGetter(atm, 'frozenTasks', internals.frozenTasks);
 
-		_.forEach(require('./internals.js')(_, internals), (fn, name) => {
+
+		_.forEach(generateATMInternals(_, internals, dispatchThrottleIntervalInMs), (fn, name) => {
 			Object.defineProperty(atm, name, {
 				enumerable: false,
 				configurable: false,

@@ -135,7 +135,7 @@ describe('Utilities', () => {
 		const zR = { a: -1, b: 0, c: 1 };
 		expect(_.isEqual(z, AsyncTaskManagerUtilities.objectAdd(x, y))).to.be.true;
 		expect(_.isEqual(y0, AsyncTaskManagerUtilities.objectSubtract(z, x))).to.be.true;
-		expect(zR).to.deep.equal(AsyncTaskManagerUtilities.objectSubtract(z2,z));
+		expect(zR).to.deep.equal(AsyncTaskManagerUtilities.objectSubtract(z2, z));
 	});
 
 	it('runPromisified works', done => {
@@ -168,5 +168,14 @@ describe('Utilities', () => {
 		arr2[0] = 7;
 		expect(arr[0]).to.equal(1);
 		expect(arr2[0]).to.equal(7);
+	});
+
+	it('isNonNegative returns proper boolean value', () => {
+		const x = { a: 1, b: -1 };
+		const y = { a: 1 };
+		const _false = AsyncTaskManagerUtilities.isNonNegative(x);
+		const _true = AsyncTaskManagerUtilities.isNonNegative(y);
+		expect(_true).to.be.true;
+		expect(_false).to.be.false;
 	});
 });

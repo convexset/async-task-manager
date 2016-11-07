@@ -18,6 +18,7 @@ const createAsyncTaskManager = require('../src')(_);
 const {
 	objectAdd,
 	objectSubtract,
+	isNonNegative,
 } = require('../src/utilities')(_);
 
 function makePromiseWithControlledResolution(resolveValue = true, rejectValue = false) {
@@ -69,7 +70,7 @@ describe('createAsyncTaskManager bare basics', () => {
 	});
 });
 
-describe('promise testing', () => {
+xdescribe('promise testing', () => {
 	it('simple promise tests', () => {
 		return Promise.all([
 			expect(Promise.resolve(5)).to.eventually.be.equal(5),
@@ -212,7 +213,7 @@ describe('createAsyncTaskManager function test', () => {
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(0);
 	});
 });
-_.times(20, () => {
+_.times(5, () => {
 	describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
 		const atm = createAsyncTaskManager({
 			resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
@@ -350,9 +351,9 @@ _.times(20, () => {
 					// console.log('x sdfads ', x);
 					if (x.event === 'start') {
 						currentResources = objectSubtract(currentResources, x.resources);
-						// console.log(currentResources);
-						const isResourceConstraintRespected = _.filter(currentResources, (v, k) => v < 0).length === 0;
-						expect(isResourceConstraintRespected).to.eq(true);
+						console.log(currentResources);
+						const isResourceConstraintRespected = isNonNegative(currentResources);
+						expect(isResourceConstraintRespected).to.be.true;
 					} else if (x.event === 'end') {
 						currentResources = objectAdd(currentResources, x.resources);
 						// console.log(currentResources);

@@ -115,7 +115,7 @@ module.exports = function createUtilities(_) {
 			});
 		},
 
-		// places a getter on an object that returns a (shallow) copy of an
+		// places a getter on an object that retu1rns a (shallow) copy of an
 		// object
 		createObjectPropertyGetter: function createObjectPropertyGetter(target, name, o) {
 			Object.defineProperty(target, name, {
@@ -129,6 +129,11 @@ module.exports = function createUtilities(_) {
 			Object.defineProperty(target, name, {
 				get: () => arr.map(x => _.isObject(x) ? _.extend({}, x) : x)
 			});
+		},
+
+		// returns a boolean by checking if item(s) of object A are all greater than 0
+		isNonNegative: function isNonNegative(object) {
+			return _.filter(object, (v, k) => v < 0).length === 0;
 		},
 	};
 };
