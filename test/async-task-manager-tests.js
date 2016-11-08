@@ -2,10 +2,16 @@ const describe = require('mocha').describe;
 const xdescribe = () => null;
 const xit = () => null;
 const it = require('mocha').it;
-const beforeEach = require('mocha').beforeEach;
-const before = require('mocha').before;
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
+
+const Random = require('random-js');
+
+function makeMTPRNG(seed) {
+	const mt = Random.engines.mt19937();
+	mt.seed(seed);
+	return mt;
+}
 
 // const should = chai.should();
 // const assert = chai.assert;
@@ -70,12 +76,118 @@ describe('createAsyncTaskManager bare basics', () => {
 	});
 });
 
-xdescribe('promise testing', () => {
+describe('promise testing', () => {
 	it('simple promise tests', () => {
 		return Promise.all([
 			expect(Promise.resolve(5)).to.eventually.be.equal(5),
 			// expect(new Promise(resolve => setTimeout(() => resolve(2), 10))).to.eventually.be.equal(5) // will fail
 		]);
+	});
+});
+
+describe('createAsyncTaskManager test for frozen List task', () => {
+	const atm = createAsyncTaskManager({
+		resources: { sheep: 3, wood: 1 }
+	});
+
+	const func = function func() {
+		return 2;
+	};
+
+	const taskADesc = {
+		id: 1,
+		inputs: {},
+		task: func,
+		resources: { sheep: 4 },
+		priority: 1,
+	};
+
+	atm.addTask(taskADesc);
+
+	it('frozen task list increases', () => {
+		expect(atm.frozenTasks.length).to.eq(1);
+	});
+	it('frozen task list decreases', () => {
+		atm.resize({ sheep: 8 });
+		expect(atm.frozenTasks.length).to.eq(0);
+	});
+});
+
+describe('createAsyncTaskManager function test rejections', () => {
+	const asyncTaskManager = createAsyncTaskManager({
+		resources: { sheep: 3, wood: 1 }
+	});
+
+	// these inputs reject the promise
+	const _inputC = makePromiseWithControlledResolution('resolve', 'rejectc');
+	const _inputD = makePromiseWithControlledResolution('resolve', 'rejected');
+
+
+	const taskGamma = function({ inputC, inputD }) {
+		const output = `${inputC}${inputD.x}`;
+		return new Promise((resolve, reject) => {
+			setTimeout(() => {
+				reject(output);
+			}, 50);
+		});
+	};
+
+	const taskGammaDescription = {
+		id: 1,
+		inputs: {
+			inputC: _inputC.promise,
+			inputD: _inputD.promise
+		},
+		task: taskGamma,
+		resources: { 'sheep': 2, 'wood': 1 },
+		priority: 3
+	};
+
+	const taskGammaPromise = asyncTaskManager.addTask(taskGammaDescription);
+
+	const taskDelta = function({ inputA, taskGammaOutput }) {
+		const output = `${inputA}${taskGammaOutput}`;
+		return new Promise((resolve, reject) => {
+			setTimeout(() => {
+				resolve(output);
+			}, 50);
+		});
+	};
+
+	const taskDeltaDescription = {
+		id: 1,
+		inputs: {
+			taskGammaOutput: taskGammaPromise,
+			inputA: 'a',
+		},
+		task: taskDelta,
+		resources: { 'sheep': 2, 'wood': 0 },
+		priority: 3
+	};
+
+	// const taskDelta
+	const taskDeltaPromise = asyncTaskManager.addTask(taskDeltaDescription);
+
+	it('taskGammapromise returns a rejection', done => {
+		_inputC.rejectPromise();
+		_inputD.rejectPromise();
+		taskGammaPromise
+			.catch(errors => {
+				expect(_.isEqual(errors.errors, [{ input: 'inputC', taskId: 1, error: 'rejectc' },
+					{ input: 'inputD', taskId: 1, error: 'rejected' }
+				])).to.be.true;
+			})
+			.then(() => done());
+	});
+
+	it('taskDeltaPromise resturns a rejection', done => {
+		taskDeltaPromise.catch(errors => {
+			expect(_.isEqual(errors.errors, [
+				{ input: 'inputC', taskId: 1, error: 'rejectc' },
+				{ input: 'inputD', taskId: 1, error: 'rejected' },
+				{ input: 'taskGammaOutput', taskId: 1 }
+			])).to.be.true;
+		}).then(() => done());
 	});
 });
 
@@ -86,7 +198,6 @@ describe('createAsyncTaskManager function test', () => {
 
 	const _inputA = makePromiseWithControlledResolution('a');
 	const _inputB = makePromiseWithControlledResolution({ b: 'b' });
-
 	// functions
 	const taskAlpha = function({ inputA, inputB }) {
 		const output = `${inputA}${inputB.b}`;
@@ -198,13 +309,10 @@ describe('createAsyncTaskManager function test', () => {
 		});
 	});
 
-	// test: resize functionality
 	it('resize can increase the total resources', () => {
 		asyncTaskManager.resize({ sheep: 6, wood: 20 });
 		expect(asyncTaskManager.totalResources.sheep).to.deep.equal(6);
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(20);
-		// expect(asyncTaskManager.currentResources.sheep).to.deep.equal(6);
-		// expect(asyncTaskManager.currentResources.wood).to.deep.equal(20);
 	});
 
 	it('resize can decrease the total resources', () => {
@@ -213,11 +321,25 @@ describe('createAsyncTaskManager function test', () => {
 		expect(asyncTaskManager.totalResources.wood).to.deep.equal(0);
 	});
 });
-_.times(1, () => {
-	describe('createAsyncTaskManager dynamically testing prereq constraint and resource constraint', () => {
+
+_.times(100, () => {
+	const randomSeed = Math.floor(1000000 * Math.random());
+	// _.times(1, () => {
+	// const randomSeed = 803712;
+	describe(`createAsyncTaskManager dynamically testing prereq constraint and resource constraint (seed: ${randomSeed})`, () => {
 		const atm = createAsyncTaskManager({
 			resources: { sheep: 3, wood: 1, coal: 7, stone: 4 }
 		});
+
+		const prng = makeMTPRNG(randomSeed);
+
+		function prngStdUniform() {
+			return Random.real(0, 1, false)(prng);
+		}
+
+		function prngInteger(min = 0, max = 10) {
+			return Random.integer(min, max)(prng);
+		}
 
 		const eventLog = [];
 		const tasksHistory = [];
@@ -239,7 +361,7 @@ _.times(1, () => {
 				return new Promise(resolve => {
 					setTimeout(() => {
 						// console.log(`[${id}] End`);
-						const returnValue = Math.floor(1000 * Math.random());
+						const returnValue = Math.floor(1000 * prngStdUniform());
 						eventLog.push({
 							id: id,
 							ts: new Date(),
@@ -248,13 +370,13 @@ _.times(1, () => {
 							returnValue: returnValue
 						});
 						resolve(returnValue);
-					}, 100 * Math.random());
+					}, 100 * prngStdUniform());
 				});
 			};
 		}
 
 		function returnItemsWithProbability(p) {
-			return () => Math.random() < p;
+			return () => prngStdUniform() < p;
 		}
 
 		function generateInput() {
@@ -270,11 +392,12 @@ _.times(1, () => {
 		}
 
 		const tdlist = [];
+		const taskPromises = [];
 		_.times(5, idx => {
 			const taskId = idx + 1; // 1 through 5
 			// console.log('looper ', taskId);
 			// const newTask = generateTask(taskId); //new task is a function
-			const resources = { sheep: _.random(0, 3), wood: _.random(0, 1), coal: _.random(0, 7), stone: _.random(0, 4) };
+			const resources = { sheep: prngInteger(0, 3), wood: prngInteger(0, 1), coal: prngInteger(0, 7), stone: prngInteger(0, 4) };
 			const input = generateInput();
 			// console.log('input adsfasdf ', input);
 			let inputPromises = input.map(x => {
@@ -292,16 +415,21 @@ _.times(1, () => {
 				priority: 1
 			};
 			const newTaskPromise = atm.addTask(taskDescription);
+
+			taskPromises.push(newTaskPromise);
 			tdlist.push(taskDescription);
 			tasksHistory.push({ newTaskPromise, taskId });
 			prereqList[taskDescription.id] = inputIds;
 		});
 
+		const allDone = Promise.all(taskPromises);
+
 		// console.log('prereqList ', prereqList);
 		_.each(prereqList, (v, k) => {
 			it(`tasks ${v} before task ${k}`, done => {
-				setTimeout(() => {
-					// console.log('EVENT LOG ', eventLog);
+				allDone.then(() => {
+					// console.log(`EVENT LOG `, eventLog);
+					// console.log(`length: ${eventLog.length}`);
 					let executionOrder = eventLog.filter(x => {
 						if (x.event === 'end') {
 							return x;
@@ -329,34 +457,37 @@ _.times(1, () => {
 							x = parseInt(x, 10);
 							// console.log('smells like teen spirit ');
 							// console.log(typeof k, typeof x, executionOrderCopy.map(x => typeof x));
-							// console.log(executionOrderCopys);
+							// console.log(executionOrderCopy);
 							// console.log(x);
 							// console.log(executionOrderCopy.includes(x));
 							expect(executionOrderCopy.indexOf(x)).to.not.eq(-1);
 						});
 					}
 					done();
-				}, 50);
+				});
 			});
 		});
 
-		it('all resource constraints are satisfied', () => {
-			let currentResources = atm.currentResources;
-			// console.log(eventLog.length);
-			// console.log(currentResources);
-			// console.log(eventLog);
-			eventLog.forEach(x => {
+		it('all resource constraints are satisfied', done => {
+			allDone.then(() => {
+				let currentResources = atm.currentResources;
 				// console.log(eventLog.length);
-				// console.log('x sdfads ', x);
-				if (x.event === 'start') {
-					currentResources = objectSubtract(currentResources, x.resources);
-					// console.log('currentResources: ', currentResources);
-					const isResourceConstraintRespected = isNonNegative(currentResources);
-					expect(isResourceConstraintRespected).to.be.true;
-				} else if (x.event === 'end') {
-					currentResources = objectAdd(currentResources, x.resources);
-					// console.log(currentResources);
-				}
+				// console.log(currentResources);
+				// console.log(eventLog);
+				eventLog.forEach(x => {
+					// console.log(eventLog.length);
+					// console.log('x sdfads ', x);
+					if (x.event === 'start') {
+						currentResources = objectSubtract(currentResources, x.resources);
+						// console.log('currentResources: ', currentResources);
+						const isResourceConstraintRespected = isNonNegative(currentResources);
+						expect(isResourceConstraintRespected).to.be.true;
+					} else if (x.event === 'end') {
+						currentResources = objectAdd(currentResources, x.resources);
+						// console.log(currentResources);
+					}
+				});
+				done();
 			});
 		});
 	});

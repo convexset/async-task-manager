@@ -23,7 +23,7 @@ module.exports = function initAsyncTaskManager(_) {
 			readyTasks: [],
 			pendingTasks: [],
 			frozenTasks: [],
-			DEBUG_MODE: true
+			DEBUG_MODE: false
 		};
 		createObjectPropertyGetter(atm, 'totalResources', internals.totalResources);
 		createObjectPropertyGetter(atm, 'currentResources', internals.currentResources);
@@ -32,7 +32,6 @@ module.exports = function initAsyncTaskManager(_) {
 		createArrayPropertyGetter(atm, 'pendingTasks', internals.pendingTasks);
 		createArrayPropertyGetter(atm, 'frozenTasks', internals.frozenTasks);
 
-
 		_.forEach(generateATMInternals(_, internals, dispatchThrottleIntervalInMs), (fn, name) => {
 			Object.defineProperty(atm, name, {
 				enumerable: false,
@@ -40,6 +39,11 @@ module.exports = function initAsyncTaskManager(_) {
 				writable: false,
 				value: fn
 			});
+		});
+
+		Object.defineProperty(atm, 'DEBUG_MODE', {
+			get: () => internals.DEBUG_MODE,
+			set: (value) => { internals.DEBUG_MODE = !!value; },
 		});
 
 		return atm;

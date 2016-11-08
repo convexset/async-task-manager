@@ -53,24 +53,27 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 		LOG('ADDING TASK', taskDescription);
 
 		// immediately adding taskDescription to a pending list
-		internals.pendingTasks.push(taskDescription);
-		LOG('PENDING TASK LIST AFTER ADDTASK IS CALLED: ', internals.pendingTasks);
-		LOG('PENDING TASK LENGTH AFTER ADDTASK IS CALLED: ', internals.pendingTasks.length);
-		promiseAll_ObjectEdition(inputs)
+		// console.log('testing testing', objectSubtract(internals.totalResources, resources));
+		if (!isNonNegative(objectSubtract(internals.totalResources, resources))) {
+			console.warn('Total resources inadequate for task completion. Task will be pushed to frozenTaskList');
+			internals.frozenTasks.push(taskDescription);
+		} else {
+			// console.log('internals pending tasks', internals.pendingTasks);
+			internals.pendingTasks.push(taskDescription);
+			LOG('PENDING TASK LIST AFTER ADDTASK IS CALLED: ', internals.pendingTasks);
+			LOG('PENDING TASK LENGTH AFTER ADDTASK IS CALLED: ', internals.pendingTasks.length);
+		}
+		promiseAll_ObjectEdition(inputs, id)
 			.then(inputsForTask => {
 				// Pre-reqs complete: Inputs available
 				// move task from pending list to ready list to await for resources
 				LOG('ENTERING PENDING TASK UPDATE FUNCTION; TASKDESCRIPTION: ', taskDescription);
-
-				// *** COMMENT *** Why not push to ready tasks here -- done
 				taskDescription.inputsResolved = inputsForTask;
 				pendingTasksUpdate();
 			})
 			.catch(error => {
 				// Pre-reqs definitively won't complete
 				taskDescription.reject(error);
-				// *** COMMENT *** test correctness of cascading error reporting
-
 				LOG('ERROR IN PROMISE IN ADDTASK.');
 			});
 
@@ -93,14 +96,10 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 			LOG('READY TASK LIST LENGTH', internals.readyTasks.length);
 			const resourceRequiredForTask = internals.readyTasks[0].resources;
 			const tempResource = objectSubtract(internals.currentResources, resourceRequiredForTask);
-			// done -- *** COMMENT *** write utility to check for non-negativity of resources; write a test or two for it
 			if (isNonNegative(tempResource)) { // there are enough resources
-				// if (_.filter(tempResource, (v, k) => v < 0).length === 0) {
 				const currentTask = internals.readyTasks.shift();
 				const currentInput = currentTask.inputsResolved;
 				// execute the new task in the executing list and return a promise resolved with the returned value
-
-				// done -- *** COMMENT *** re-use: clean up
 				internals.currentResources = tempResource;
 				LOG('RESOURCES AFTER MOVING TASK TO EXECUTING LIST ', internals.currentResources);
 				internals.executingTasks.push(currentTask);
@@ -115,23 +114,15 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 						// after execution is complete free resources and remove from executing list
 						LOG('EXECUTING TASK LIST AFTER TASK COMPLETION', internals.executingTasks);
 						LOG('EXECUTING TASK LENGTH', internals.executingTasks.length);
-						// pendingTasksUpdate();
-						// done --*** COMMENT *** use setTimeout(pendingTasksUpdate, 0)
 						setTimeout(_dispatchReadyTask, 0);
 					})
 					.catch(z => {
-						// console.log('inside catch', z);
 						currentTask.reject(z);
-						// done -- *** COMMENT *** need to reject for currentTask
 					})
 					.then(() => {
-						// like "finally"
-						// internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
 						LOG('RESOURCE LIST AFTER TASK COMPLETION', internals.currentResources);
 						internals.executingTasks.splice(internals.executingTasks.indexOf(currentTask), 1);
 						internals.currentResources = objectAdd(internals.currentResources, currentTask.resources);
-						// pendingTasksUpdate();
-						// done -- *** COMMENT *** use setTimeout(pendingTasksUpdate, 0)
 						setTimeout(_dispatchReadyTask, 0);
 					});
 			} else {
@@ -141,14 +132,12 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 		}
 	}
 
-	// const dispatchReadyTask = _.throttle(_dispatchReadyTask, dispatchThrottleIntervalInMs);
+	const dispatchReadyTask = _.throttle(_dispatchReadyTask, dispatchThrottleIntervalInMs);
 
 	function pendingTasksUpdate() {
-		// *** COMMENT *** what does this do?
 		LOG('PENDING TASKS LENGTH ', internals.pendingTasks.length);
 		const newlyReadyTasks = [];
 		internals.pendingTasks.forEach(x => {
-			// *** COMMENT *** move this...
 			if (x.inputsResolved) {
 				newlyReadyTasks.push(x);
 				internals.pendingTasks.splice(internals.pendingTasks.indexOf(x), 1);
@@ -158,11 +147,10 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 		LOG('NEWLY READY TASKS TASK LENGTH', newlyReadyTasks.length);
 		LOG('PENDING TASK UPDATED', internals.pendingTasks);
 		LOG('PENDING TASK LENGTH', internals.pendingTasks.length);
-		// *** COMMENT *** move this... to (*** PTU ***)
 		internals.readyTasks.push(...newlyReadyTasks);
 		LOG('READY TASK UPDATED', internals.readyTasks);
 		LOG('READY TASK LENGTH', internals.readyTasks.length);
-		_dispatchReadyTask();
+		dispatchReadyTask();
 	}
 
 	function updateFrozenTaskList() {
@@ -182,7 +170,7 @@ module.exports = function generateInternals(_, internals, dispatchThrottleInterv
 		});
 		internals.frozenTasks.forEach(x => {
 			if (isNonNegative(internals.totalResources, x.resources)) {
-				internals.pendingTask.push(internals.frozenTasks.splice(internals.frozenTasks.indexOf(x), 1));
+				internals.pendingTasks.push(internals.frozenTasks.splice(internals.frozenTasks.indexOf(x), 1));
 				// eslint-disable-next-line no-console
 				console.warn(`Total Resources greater than requirement for task ${x}. Task ${x} can be executed and will be moved to pending list`);
 			}

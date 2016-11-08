@@ -133,7 +133,7 @@ module.exports = function createUtilities(_) {
 
 		// returns a boolean by checking if item(s) of object A are all greater than 0
 		isNonNegative: function isNonNegative(object) {
-			return _.filter(object, (v, k) => v < 0).length === 0;
+			return _.filter(object, v => v < 0).length === 0;
 		},
 	};
 };

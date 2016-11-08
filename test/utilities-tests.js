@@ -172,7 +172,7 @@ describe('Utilities', () => {
 
 	it('isNonNegative returns proper boolean value', () => {
 		const x = { a: 1, b: -1 };
-		const y = { a: 1 };
+		const y = { a: 1, b: 0 };
 		const _false = AsyncTaskManagerUtilities.isNonNegative(x);
 		const _true = AsyncTaskManagerUtilities.isNonNegative(y);
 		expect(_true).to.be.true;
