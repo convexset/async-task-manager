@@ -150,6 +150,7 @@ describe('createAsyncTaskManager function test rejections', () => {
 		return new Promise((resolve, reject) => {
 			setTimeout(() => {
 				resolve(output);
+				reject();
 			}, 50);
 		});
 	};
@@ -288,7 +289,10 @@ describe('createAsyncTaskManager function test', () => {
 					done(err);
 				}
 			}, 10);
-		}).catch(x => { console.log('catching promise', x); });
+		}).catch(x => {
+			// eslint-disable-next-line no-console
+		 	console.log('catching promise', x);
+		});
 	});
 
 	// test: taskBetaPromise resolves
